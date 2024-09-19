@@ -41,6 +41,9 @@ function badbehavior:log()
 		0,
 		badbehavior.increase,
 		self.ctx.bw.remote_addr,
+                ngx.var.host,
+                self.ctx.bw.request_method,
+                ngx.var.status,
 		tonumber(self.variables["BAD_BEHAVIOR_COUNT_TIME"]),
 		tonumber(self.variables["BAD_BEHAVIOR_BAN_TIME"]),
 		tonumber(self.variables["BAD_BEHAVIOR_THRESHOLD"]),
@@ -62,7 +65,7 @@ function badbehavior:log_stream()
 end
 
 -- luacheck: ignore 212
-function badbehavior.increase(premature, ip, count_time, ban_time, threshold, use_redis)
+function badbehavior.increase(premature, ip, host, request_method, status_code, count_time, ban_time, threshold, use_redis)
 	-- Instantiate objects
 	local logger = require "bunkerweb.logger":new("badbehavior")
 	local datastore = require "bunkerweb.datastore":new()
@@ -122,7 +125,7 @@ function badbehavior.increase(premature, ip, count_time, ban_time, threshold, us
 	end
 	logger:log(
 		NOTICE,
-		"increased counter for IP " .. ip .. " (" .. tostring(counter) .. "/" .. tostring(threshold) .. ")"
+		"increased counter for IP " .. ip .. " reason: ".. request_method .. " to " .. host .. " resulted in " .. status_code .. " (" .. tostring(counter) .. "/" .. tostring(threshold) .. ")"
 	)
 end
 
