@@ -2,7 +2,7 @@
 {% block content %}
 <div class="col-span-12 lg:col-span-12 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl">
     <div id="update-indicator">
-        <svg width="32" height="32" viewBox="0 0 32 32" style="margin-right: 10px">
+        <svg width="32" height="32" viewBox="0 0 32 32" style="margin-right: 10px;transform: rotateY(-180deg) rotateZ(-90deg)">
             <circle cx="16" cy="16" r="14" stroke="#4BC0C0" stroke-width="3" fill="none" stroke-dasharray="88" stroke-dashoffset="88"></circle>
         </svg>
         <button class="time-filter" data-range="1hr">1 Hour</button>
@@ -73,7 +73,7 @@
             </div>
         `;
 
-        let _hosts = '<div class="col-span-6 lg:col-span-6 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl"><h3>Popular hosts_stats</h3>';
+        let _hosts = '<div class="col-span-6 lg:col-span-6 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl"><h4>Popular hosts</h4>';
         data.top_hosts.slice(0, 5).forEach(([host, count]) => {
             const percentage = (count / data.total_requests) * 100;
             _hosts += `
@@ -91,7 +91,7 @@
         _hosts += '</div>';
         content.innerHTML += _hosts;
 
-        let _uas = '<div class="col-span-6 lg:col-span-6 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl"><h3>Top User Agents</h3>';
+        let _uas = '<div class="col-span-6 lg:col-span-6 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl"><h4>Top User Agents</h4>';
         data.top_user_agents.slice(0, 5).forEach(([ua, count]) => {
             const percentage = (count / data.total_requests) * 100;
             _uas += `
@@ -108,6 +108,61 @@
         });
         _uas += '</div>';
         content.innerHTML += _uas;
+
+        content.innerHTML += '<div class="col-span-4 lg:col-span-4 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl"><h4>Status Codes</h4><canvas id="statusCodesChart"></canvas></div>';
+        content.innerHTML += '<div class="col-span-4 lg:col-span-4 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl"><h4>Top IPs</h4><canvas id="topIPsChart"></canvas></div>';
+        
+        new Chart(document.getElementById('statusCodesChart'), {
+            type: 'doughnut',
+            data: {
+                labels: data.status_codes.map((x) => x[0]),
+                datasets: [{
+                    label: 'Status-Codes',
+                    data: data.status_codes.map((x) => x[1]),
+                    backgroundColor: [
+                        'rgba(75, 192, 192, 0.2)',
+                        'rgba(255, 99, 132, 0.2)',
+                        'rgba(54, 162, 235, 0.2)',
+                        'rgba(153, 102, 255, 0.2)',
+                        'rgba(255, 159, 64, 0.2)'
+                    ],
+                    borderColor: [
+                        'rgba(75, 192, 192, 1)',
+                        'rgba(255, 99, 132, 1)',
+                        'rgba(54, 162, 235, 1)',
+                        'rgba(153, 102, 255, 1)',
+                        'rgba(255, 159, 64, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            }
+        });
+
+        new Chart(document.getElementById('topIPsChart'), {
+            type: 'doughnut',
+            data: {
+                labels: data.top_ips.map((x) => x[0]),
+                datasets: [{
+                    label: 'Top IPs',
+                    data: data.top_ips.map((x) => x[1]),
+                    backgroundColor: [
+                        'rgba(75, 192, 192, 0.2)',
+                        'rgba(255, 99, 132, 0.2)',
+                        'rgba(54, 162, 235, 0.2)',
+                        'rgba(153, 102, 255, 0.2)',
+                        'rgba(255, 159, 64, 0.2)'
+                    ],
+                    borderColor: [
+                        'rgba(75, 192, 192, 1)',
+                        'rgba(255, 99, 132, 1)',
+                        'rgba(54, 162, 235, 1)',
+                        'rgba(153, 102, 255, 1)',
+                        'rgba(255, 159, 64, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            }
+        });
     }
 
     // Funktion zum Zurücksetzen des Timers
