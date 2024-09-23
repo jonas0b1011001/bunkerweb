@@ -2154,7 +2154,6 @@ def reports():
     )
 
 def parse_logs():
-    # Regex für das Parsing des Log-Eintrags
     log_pattern = re_compile(
         r'(?P<host>\S+) - (?P<status>\d{3}) - (?P<remote_addr>\S+) \[(?P<time_local>[^\]]+)\] "(?P<request>[^"]+)" "(?P<http_user_agent>[^"]+)" (?P<upstream_response_time>\S+)'
     )
@@ -2162,9 +2161,12 @@ def parse_logs():
     total_requests = 0
     successful_requests = 0
     failed_requests = 0
+    requests_4xx = 0
+    requests_5xx = 0
     hosts = Counter()
     ips = Counter()
     user_agents = Counter()
+    status_codes = Counter()
 
     logs_access = []
     nginx_access_file = Path(sep, "var", "log", "bunkerweb", "access.log")
@@ -2182,25 +2184,34 @@ def parse_logs():
                     user_agent = data['http_user_agent']
 
                     # Erfolgreiche Anfragen (Statuscode 2xx)
-                    if 200 <= status_code < 300:
+                    if status_code < 399:
                         successful_requests += 1
-                    else:
+                    elif 400 <= status_code < 500:
+                        requests_4xx += 1
+                        failed_requests += 1
+                    elif 500 <= status_code < 600:
+                        requests_5xx += 1
                         failed_requests += 1
 
-                    # Hostname und IP zählen
+                    # Status-Codes zählen
+                    status_codes[status_code] += 1
+
+                    # Hostname, IP und User-Agent zählen
                     hosts[host] += 1
                     ips[ip] += 1
-
-                    # User-Agent zählen
                     user_agents[user_agent] += 1
 
     return {
         'total_requests': total_requests,
         'successful_requests': successful_requests,
         'failed_requests': failed_requests,
-        'top_hosts': hosts.most_common(5),
-        'top_ips': ips.most_common(5),
-        'top_user_agents': user_agents.most_common(5)
+        'requests_4xx_percent': round((requests_4xx / total_requests) * 100, 2) if total_requests > 0 else 0,
+        'requests_5xx_percent': round((requests_5xx / total_requests) * 100, 2) if total_requests > 0 else 0,
+        'unique_ips': len(ips),
+        'top_hosts': hosts.most_common(),
+        'top_ips': ips.most_common(10),
+        'top_user_agents': user_agents.most_common(10),
+        'status_codes': status_codes.most_common()
     }
 
 @app.route("/statistics", methods=["GET"])

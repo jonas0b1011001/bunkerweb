@@ -1,68 +1,147 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="justify-between dark:brightness-110 overflow-hidden hover:scale-102 transition col-span-12 lg:col-span-6 3xl:col-span-4 p-4 w-full shadow-md break-words bg-white dark:bg-slate-850 dark:shadow-dark-xl rounded-2xl bg-clip-border">
-    <h2>Nginx Log-Analyse</h2>
+<div class="col-span-3 lg:col-span-3 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl">
+    <h4>Total requests</h4>
+    <strong>{{ data.total_requests }}</strong>
+</div>
+<div class="col-span-3 lg:col-span-3 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl">
+    <h4>4xx Error</h4>
+    <strong>{{ data.requests_4xx_percent }}%</strong>
+</div>
+<div class="col-span-3 lg:col-span-3 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl">
+    <h4>5xx Error</h4>
+    <strong>{{ data.requests_5xx_percent }}%</strong>
+</div>
+<div class="col-span-3 lg:col-span-3 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl">
+    <h4>Unique IPs</h4>
+    <strong>{{ data.unique_ips }}</strong>
+</div>
+<div class="col-span-4 lg:col-span-4 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl">
+    <h2>Status Codes</h2>
+    <canvas id="statusCodesChart"></canvas>
+</div>
 
-    <p>Gesamtzahl der Anfragen: {{ data.total_requests }}</p>
-    <p>Erfolgreiche Anfragen: {{ data.successful_requests }}</p>
-    <p>Fehlgeschlagene Anfragen: {{ data.failed_requests }}</p>
+<div class="col-span-4 lg:col-span-4 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl">
+    <h2>Top Hostnames</h2>
+    <canvas id="topHostsChart"></canvas>
 </div>
-<div class="justify-between dark:brightness-110 overflow-hidden hover:scale-102 transition col-span-12 lg:col-span-6 3xl:col-span-4 p-4 w-full shadow-md break-words bg-white dark:bg-slate-850 dark:shadow-dark-xl rounded-2xl bg-clip-border">
 
-    <h2>Top 5 Hostnames</h2>
-    <ul>
-    {% for host, count in data.top_hosts %}
-        <li>{{ host }}: {{ count }} Anfragen</li>
-    {% endfor %}
-    </ul>
+<div class="col-span-4 lg:col-span-4 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl">
+    <h2>Top IPs</h2>
+    <canvas id="topIPsChart"></canvas>
 </div>
-<div class="justify-between dark:brightness-110 overflow-hidden hover:scale-102 transition col-span-12 lg:col-span-6 3xl:col-span-4 p-4 w-full shadow-md break-words bg-white dark:bg-slate-850 dark:shadow-dark-xl rounded-2xl bg-clip-border">
-    <h2>Top 5 IP-Adressen</h2>
-    <ul>
-    {% for ip, count in data.top_ips %}
-        <li>{{ ip }}: {{ count }} Anfragen</li>
-    {% endfor %}
-    </ul>
-</div>
-<div class="justify-between dark:brightness-110 overflow-hidden hover:scale-102 transition col-span-12 lg:col-span-6 3xl:col-span-4 p-4 w-full shadow-md break-words bg-white dark:bg-slate-850 dark:shadow-dark-xl rounded-2xl bg-clip-border">
-    <h2>Top 5 User-Agents</h2>
-    <ul>
-    {% for agent, count in data.top_user_agents %}
-        <li>{{ agent }}: {{ count }} Anfragen</li>
-    {% endfor %}
-    </ul>
-</div>
-<div class="justify-between dark:brightness-110 overflow-hidden hover:scale-102 transition col-span-12 lg:col-span-6 3xl:col-span-4 p-4 w-full shadow-md break-words bg-white dark:bg-slate-850 dark:shadow-dark-xl rounded-2xl bg-clip-border">
-    <h2>Grafische Darstellung</h2>
 
-    <canvas id="requestsChart"></canvas>
+<div class="col-span-4 lg:col-span-4 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl">
+    <h2>Top User-Agents</h2>
+    <canvas id="topUserAgentsChart"></canvas>
 </div>
 
 <script nonce="{{ script_nonce }}">
-    new Chart("requestsChart", {
-        type: 'bar',
+    // Status-Codes Doughnut-Chart
+    new Chart(document.getElementById('statusCodesChart'), {
+        type: 'doughnut',
         data: {
-            labels: ['Erfolgreich', 'Fehlgeschlagen'],
+            labels: [{% for status, _ in data.status_codes %} "{{ status }}", {% endfor %}],
             datasets: [{
-                label: '# Anfragen',
-                data: [{{ data.successful_requests }}, {{ data.failed_requests }}],
+                label: 'Status-Codes',
+                data: [{% for _, count in data.status_codes %} {{ count }}, {% endfor %}],
                 backgroundColor: [
                     'rgba(75, 192, 192, 0.2)',
-                    'rgba(255, 99, 132, 0.2)'
+                    'rgba(255, 99, 132, 0.2)',
+                    'rgba(54, 162, 235, 0.2)',
+                    'rgba(153, 102, 255, 0.2)',
+                    'rgba(255, 159, 64, 0.2)'
                 ],
                 borderColor: [
                     'rgba(75, 192, 192, 1)',
-                    'rgba(255, 99, 132, 1)'
+                    'rgba(255, 99, 132, 1)',
+                    'rgba(54, 162, 235, 1)',
+                    'rgba(153, 102, 255, 1)',
+                    'rgba(255, 159, 64, 1)'
                 ],
                 borderWidth: 1
             }]
-        },
-        options: {
-            scales: {
-                y: {
-                    beginAtZero: true
-                }
-            }
+        }
+    });
+
+    // Top 5 Hosts Doughnut-Chart
+    new Chart(document.getElementById('topHostsChart'), {
+        type: 'doughnut',
+        data: {
+            labels: [{% for host, _ in data.top_hosts %} "{{ host }}", {% endfor %}],
+            datasets: [{
+                label: 'Top Hosts',
+                data: [{% for _, count in data.top_hosts %} {{ count }}, {% endfor %}],
+                backgroundColor: [
+                    'rgba(75, 192, 192, 0.2)',
+                    'rgba(255, 99, 132, 0.2)',
+                    'rgba(54, 162, 235, 0.2)',
+                    'rgba(153, 102, 255, 0.2)',
+                    'rgba(255, 159, 64, 0.2)'
+                ],
+                borderColor: [
+                    'rgba(75, 192, 192, 1)',
+                    'rgba(255, 99, 132, 1)',
+                    'rgba(54, 162, 235, 1)',
+                    'rgba(153, 102, 255, 1)',
+                    'rgba(255, 159, 64, 1)'
+                ],
+                borderWidth: 1
+            }]
+        }
+    });
+
+    // Top 5 IPs Doughnut-Chart
+    new Chart(document.getElementById('topIPsChart'), {
+        type: 'doughnut',
+        data: {
+            labels: [{% for ip, _ in data.top_ips %} "{{ ip }}", {% endfor %}],
+            datasets: [{
+                label: 'Top IPs',
+                data: [{% for _, count in data.top_ips %} {{ count }}, {% endfor %}],
+                backgroundColor: [
+                    'rgba(75, 192, 192, 0.2)',
+                    'rgba(255, 99, 132, 0.2)',
+                    'rgba(54, 162, 235, 0.2)',
+                    'rgba(153, 102, 255, 0.2)',
+                    'rgba(255, 159, 64, 0.2)'
+                ],
+                borderColor: [
+                    'rgba(75, 192, 192, 1)',
+                    'rgba(255, 99, 132, 1)',
+                    'rgba(54, 162, 235, 1)',
+                    'rgba(153, 102, 255, 1)',
+                    'rgba(255, 159, 64, 1)'
+                ],
+                borderWidth: 1
+            }]
+        }
+    });
+
+    // Top 5 User-Agents Doughnut-Chart
+    new Chart(document.getElementById('topUserAgentsChart'), {
+        type: 'doughnut',
+        data: {
+            labels: [{% for agent, _ in data.top_user_agents %} "{{ agent }}", {% endfor %}],
+            datasets: [{
+                label: 'Top User-Agents',
+                data: [{% for _, count in data.top_user_agents %} {{ count }}, {% endfor %}],
+                backgroundColor: [
+                    'rgba(75, 192, 192, 0.2)',
+                    'rgba(255, 99, 132, 0.2)',
+                    'rgba(54, 162, 235, 0.2)',
+                    'rgba(153, 102, 255, 0.2)',
+                    'rgba(255, 159, 64, 0.2)'
+                ],
+                borderColor: [
+                    'rgba(75, 192, 192, 1)',
+                    'rgba(255, 99, 132, 1)',
+                    'rgba(54, 162, 235, 1)',
+                    'rgba(153, 102, 255, 1)',
+                    'rgba(255, 159, 64, 1)'
+                ],
+                borderWidth: 1
+            }]
         }
     });
 </script>
