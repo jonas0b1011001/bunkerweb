@@ -2160,7 +2160,9 @@ def parse_logs(range="max"):
 
     # Berechne den Zeitfilter
     now = datetime.now()
-    if range == "24hrs":
+    if range == "1hr":
+        time_limit = now - timedelta(hours=1)
+    elif range == "24hrs":
         time_limit = now - timedelta(hours=24)
     elif range == "7d":
         time_limit = now - timedelta(days=7)
