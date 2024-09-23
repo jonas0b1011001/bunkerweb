@@ -1,0 +1,14 @@
+.time-filter {
+    padding: 10px 20px;
+    background-color: #f1f1f1;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    margin-right: 10px;
+}
+
+.time-filter.active {
+    background-color: #4BC0C0;
+    color: white;
+}

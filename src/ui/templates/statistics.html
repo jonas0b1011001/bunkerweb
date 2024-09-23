@@ -3,27 +3,46 @@
 <div class="col-span-12 lg:col-span-12 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl">
     <h2>Filter by time</h2>
     <div>
-        <button class="time-filter" data-range="24hrs">24 Hours</button>
+        <button class="time-filter active" data-range="24hrs">24 Hours</button>
         <button class="time-filter" data-range="7d">7 Days</button>
         <button class="time-filter" data-range="30d">30 Days</button>
         <button class="time-filter" data-range="max">Max</button>
     </div>
+    <div id="update-indicator" class="mt-2 relative">
+        <svg width="32" height="32" viewBox="0 0 32 32">
+            <circle cx="16" cy="16" r="14" stroke="#4BC0C0" stroke-width="3" fill="none" stroke-dasharray="88" stroke-dashoffset="88"></circle>
+        </svg>
+        <span id="time-left" class="absolute top-0 left-10">60s</span>
+    </div>
 </div>
+
 <div class="col-span-12 lg:col-span-12">
     <div id="statistics-content" class="grid grid-cols-12 gap-4"></div>
 </div>
 
 <script nonce="{{ script_nonce }}">
+    let updateInterval = 60;  // Update-Intervall (in Sekunden)
+    let timeLeft = updateInterval;  // Zeit bis zur nächsten Aktualisierung
+    let activeRange = '24hrs';  // Standardmäßig 24 Stunden als ausgewählter Filter
+    let timer;  // Referenz für das setInterval
+
     document.querySelectorAll('.time-filter').forEach(button => {
         button.addEventListener('click', function() {
-            const range = this.getAttribute('data-range');
-            fetchStatistics(range);
+            // Filter-Auswahl visuell hervorheben
+            document.querySelectorAll('.time-filter').forEach(btn => btn.classList.remove('active'));
+            this.classList.add('active');
+            activeRange = this.getAttribute('data-range');
+
+            // Daten sofort neu laden und Timer zurücksetzen
+            resetTimer();
+            fetchStatistics(activeRange);
         });
     });
 
     // Initiales Laden der Daten (standardmäßig "max")
     fetchStatistics('max');
 
+    // Datenabruf-Funktion
     function fetchStatistics(range) {
         fetch(`{{ url_for('statistics') }}/data?range=${range}`)
             .then(response => response.json())
@@ -31,6 +50,7 @@
             .catch(error => console.error('Error fetching data:', error));
     }
 
+    // Funktion zur Darstellung der Statistikdaten
     function renderStatistics(data) {
         // Container leeren
         const content = document.getElementById('statistics-content');
@@ -92,5 +112,38 @@
         _uas += '</div>';
         content.innerHTML += _uas;
     }
+
+    // Funktion zum Zurücksetzen des Timers
+    function resetTimer() {
+        clearInterval(timer);  // Aktuellen Timer stoppen
+        timeLeft = updateInterval;  // Timer auf Ausgangszeit zurücksetzen
+        startTimer();  // Timer erneut starten
+    }
+
+    // Timer-Logik
+    function startTimer() {
+        timer = setInterval(updateTimer, 1000);  // Jede Sekunde aktualisieren
+    }
+
+    // Aktualisierungsfunktion und Timer-Logik
+    function updateTimer() {
+        const circle = document.querySelector('#update-indicator circle');
+        const dashArray = 88;  // Voller Umfang des Kreises
+        const dashOffset = (timeLeft / updateInterval) * dashArray;
+        circle.style.strokeDashoffset = dashOffset;
+
+        // Zeitanzeige aktualisieren
+        document.getElementById('time-left').innerText = `${timeLeft}s`;
+
+        timeLeft--;
+
+        if (timeLeft < 0) {
+            timeLeft = updateInterval;
+            fetchStatistics(activeRange);  // Daten neu laden
+        }
+    }
+
+    // Starte den Timer nach dem Initialen Laden
+    startTimer();
 </script>
 {% endblock content %}
