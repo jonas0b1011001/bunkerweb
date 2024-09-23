@@ -16,24 +16,45 @@
     <h4>Unique IPs</h4>
     <strong>{{ data.unique_ips }}</strong>
 </div>
+<div class="col-span-6 lg:col-span-6 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl">
+    <h2>Popular Hosts</h2>
+    {% for host, count in data.top_hosts %}
+        {% if loop.index <= 5 %}
+            <div style="margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between;">
+                    <div style="font-size: 14px;">{{ host }}</div>
+                    <div style="font-size: 14px; font-weight: bold;">{{ count }}</div>
+                </div>
+                <div style="background-color: #67748e; border-radius: 5px; height: 10px; position: relative; margin-top: 5px;">
+                    <div style="height: 100%; background-color: #f6bf42; border-radius: 5px; width: {{ (count / data.total_requests) * 100 }}%;"></div>
+                </div>
+            </div>
+        {% endif %}
+    {% endfor %}
+</div>
+<div class="col-span-6 lg:col-span-6 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl">
+    <h2>Top User Agents</h2>
+    {% for ua, count in data.top_user_agents %}
+        {% if loop.index <= 5 %}
+            <div style="margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between;">
+                    <div style="font-size: 14px;">{{ ua }}</div>
+                    <div style="font-size: 14px; font-weight: bold;">{{ count }}</div>
+                </div>
+                <div style="background-color: #67748e; border-radius: 5px; height: 10px; position: relative; margin-top: 5px;">
+                    <div style="height: 100%; background-color: #f64279; border-radius: 5px; width: {{ (count / data.total_requests) * 100 }}%;"></div>
+                </div>
+            </div>
+        {% endif %}
+    {% endfor %}
+</div>
 <div class="col-span-4 lg:col-span-4 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl">
     <h2>Status Codes</h2>
     <canvas id="statusCodesChart"></canvas>
 </div>
-
-<div class="col-span-4 lg:col-span-4 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl">
-    <h2>Top Hostnames</h2>
-    <canvas id="topHostsChart"></canvas>
-</div>
-
 <div class="col-span-4 lg:col-span-4 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl">
     <h2>Top IPs</h2>
     <canvas id="topIPsChart"></canvas>
-</div>
-
-<div class="col-span-4 lg:col-span-4 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl">
-    <h2>Top User-Agents</h2>
-    <canvas id="topUserAgentsChart"></canvas>
 </div>
 
 <script nonce="{{ script_nonce }}">
@@ -45,33 +66,6 @@
             datasets: [{
                 label: 'Status-Codes',
                 data: [{% for _, count in data.status_codes %} {{ count }}, {% endfor %}],
-                backgroundColor: [
-                    'rgba(75, 192, 192, 0.2)',
-                    'rgba(255, 99, 132, 0.2)',
-                    'rgba(54, 162, 235, 0.2)',
-                    'rgba(153, 102, 255, 0.2)',
-                    'rgba(255, 159, 64, 0.2)'
-                ],
-                borderColor: [
-                    'rgba(75, 192, 192, 1)',
-                    'rgba(255, 99, 132, 1)',
-                    'rgba(54, 162, 235, 1)',
-                    'rgba(153, 102, 255, 1)',
-                    'rgba(255, 159, 64, 1)'
-                ],
-                borderWidth: 1
-            }]
-        }
-    });
-
-    // Top 5 Hosts Doughnut-Chart
-    new Chart(document.getElementById('topHostsChart'), {
-        type: 'doughnut',
-        data: {
-            labels: [{% for host, _ in data.top_hosts %} "{{ host }}", {% endfor %}],
-            datasets: [{
-                label: 'Top Hosts',
-                data: [{% for _, count in data.top_hosts %} {{ count }}, {% endfor %}],
                 backgroundColor: [
                     'rgba(75, 192, 192, 0.2)',
                     'rgba(255, 99, 132, 0.2)',

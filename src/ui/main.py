@@ -2210,7 +2210,7 @@ def parse_logs():
         'unique_ips': len(ips),
         'top_hosts': hosts.most_common(),
         'top_ips': ips.most_common(10),
-        'top_user_agents': user_agents.most_common(10),
+        'top_user_agents': user_agents.most_common(),
         'status_codes': status_codes.most_common()
     }
 
