@@ -1,142 +1,96 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="col-span-3 lg:col-span-3 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl">
-    <h4>Total requests</h4>
-    <strong>{{ data.total_requests }}</strong>
+<div class="col-span-12 lg:col-span-12 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl">
+    <h2>Filter by time</h2>
+    <div>
+        <button class="time-filter" data-range="24hrs">24 Hours</button>
+        <button class="time-filter" data-range="7d">7 Days</button>
+        <button class="time-filter" data-range="30d">30 Days</button>
+        <button class="time-filter" data-range="max">Max</button>
+    </div>
 </div>
-<div class="col-span-3 lg:col-span-3 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl">
-    <h4>4xx Error</h4>
-    <strong>{{ data.requests_4xx_percent }}%</strong>
-</div>
-<div class="col-span-3 lg:col-span-3 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl">
-    <h4>5xx Error</h4>
-    <strong>{{ data.requests_5xx_percent }}%</strong>
-</div>
-<div class="col-span-3 lg:col-span-3 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl">
-    <h4>Unique IPs</h4>
-    <strong>{{ data.unique_ips }}</strong>
-</div>
-<div class="col-span-6 lg:col-span-6 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl">
-    <h2>Popular Hosts</h2>
-    {% for host, count in data.top_hosts %}
-        {% if loop.index <= 5 %}
-            <div style="margin-bottom: 20px;">
-                <div style="display: flex; justify-content: space-between;">
-                    <div style="font-size: 14px;">{{ host }}</div>
-                    <div style="font-size: 14px; font-weight: bold;">{{ count }}</div>
-                </div>
-                <div style="background-color: #67748e; border-radius: 5px; height: 10px; position: relative; margin-top: 5px;">
-                    <div style="height: 100%; background-color: #f6bf42; border-radius: 5px; width: {{ (count / data.total_requests) * 100 }}%;"></div>
-                </div>
-            </div>
-        {% endif %}
-    {% endfor %}
-</div>
-<div class="col-span-6 lg:col-span-6 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl">
-    <h2>Top User Agents</h2>
-    {% for ua, count in data.top_user_agents %}
-        {% if loop.index <= 5 %}
-            <div style="margin-bottom: 20px;">
-                <div style="display: flex; justify-content: space-between;">
-                    <div style="font-size: 14px;">{{ ua }}</div>
-                    <div style="font-size: 14px; font-weight: bold;">{{ count }}</div>
-                </div>
-                <div style="background-color: #67748e; border-radius: 5px; height: 10px; position: relative; margin-top: 5px;">
-                    <div style="height: 100%; background-color: #f64279; border-radius: 5px; width: {{ (count / data.total_requests) * 100 }}%;"></div>
-                </div>
-            </div>
-        {% endif %}
-    {% endfor %}
-</div>
-<div class="col-span-4 lg:col-span-4 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl">
-    <h2>Status Codes</h2>
-    <canvas id="statusCodesChart"></canvas>
-</div>
-<div class="col-span-4 lg:col-span-4 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl">
-    <h2>Top IPs</h2>
-    <canvas id="topIPsChart"></canvas>
+<div class="col-span-12 lg:col-span-12">
+    <div id="statistics-content" class="grid grid-cols-12 gap-4"></div>
 </div>
 
 <script nonce="{{ script_nonce }}">
-    // Status-Codes Doughnut-Chart
-    new Chart(document.getElementById('statusCodesChart'), {
-        type: 'doughnut',
-        data: {
-            labels: [{% for status, _ in data.status_codes %} "{{ status }}", {% endfor %}],
-            datasets: [{
-                label: 'Status-Codes',
-                data: [{% for _, count in data.status_codes %} {{ count }}, {% endfor %}],
-                backgroundColor: [
-                    'rgba(75, 192, 192, 0.2)',
-                    'rgba(255, 99, 132, 0.2)',
-                    'rgba(54, 162, 235, 0.2)',
-                    'rgba(153, 102, 255, 0.2)',
-                    'rgba(255, 159, 64, 0.2)'
-                ],
-                borderColor: [
-                    'rgba(75, 192, 192, 1)',
-                    'rgba(255, 99, 132, 1)',
-                    'rgba(54, 162, 235, 1)',
-                    'rgba(153, 102, 255, 1)',
-                    'rgba(255, 159, 64, 1)'
-                ],
-                borderWidth: 1
-            }]
-        }
+    document.querySelectorAll('.time-filter').forEach(button => {
+        button.addEventListener('click', function() {
+            const range = this.getAttribute('data-range');
+            fetchStatistics(range);
+        });
     });
 
-    // Top 5 IPs Doughnut-Chart
-    new Chart(document.getElementById('topIPsChart'), {
-        type: 'doughnut',
-        data: {
-            labels: [{% for ip, _ in data.top_ips %} "{{ ip }}", {% endfor %}],
-            datasets: [{
-                label: 'Top IPs',
-                data: [{% for _, count in data.top_ips %} {{ count }}, {% endfor %}],
-                backgroundColor: [
-                    'rgba(75, 192, 192, 0.2)',
-                    'rgba(255, 99, 132, 0.2)',
-                    'rgba(54, 162, 235, 0.2)',
-                    'rgba(153, 102, 255, 0.2)',
-                    'rgba(255, 159, 64, 0.2)'
-                ],
-                borderColor: [
-                    'rgba(75, 192, 192, 1)',
-                    'rgba(255, 99, 132, 1)',
-                    'rgba(54, 162, 235, 1)',
-                    'rgba(153, 102, 255, 1)',
-                    'rgba(255, 159, 64, 1)'
-                ],
-                borderWidth: 1
-            }]
-        }
-    });
+    // Initiales Laden der Daten (standardmäßig "max")
+    fetchStatistics('max');
 
-    // Top 5 User-Agents Doughnut-Chart
-    new Chart(document.getElementById('topUserAgentsChart'), {
-        type: 'doughnut',
-        data: {
-            labels: [{% for agent, _ in data.top_user_agents %} "{{ agent }}", {% endfor %}],
-            datasets: [{
-                label: 'Top User-Agents',
-                data: [{% for _, count in data.top_user_agents %} {{ count }}, {% endfor %}],
-                backgroundColor: [
-                    'rgba(75, 192, 192, 0.2)',
-                    'rgba(255, 99, 132, 0.2)',
-                    'rgba(54, 162, 235, 0.2)',
-                    'rgba(153, 102, 255, 0.2)',
-                    'rgba(255, 159, 64, 0.2)'
-                ],
-                borderColor: [
-                    'rgba(75, 192, 192, 1)',
-                    'rgba(255, 99, 132, 1)',
-                    'rgba(54, 162, 235, 1)',
-                    'rgba(153, 102, 255, 1)',
-                    'rgba(255, 159, 64, 1)'
-                ],
-                borderWidth: 1
-            }]
-        }
-    });
+    function fetchStatistics(range) {
+        fetch(`{{ url_for('statistics') }}/data?range=${range}`)
+            .then(response => response.json())
+            .then(data => renderStatistics(data))
+            .catch(error => console.error('Error fetching data:', error));
+    }
+
+    function renderStatistics(data) {
+        // Container leeren
+        const content = document.getElementById('statistics-content');
+        content.innerHTML = '';
+
+        // Dynamisch Daten anzeigen
+        content.innerHTML += `
+            <div class="col-span-3 lg:col-span-3 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl">
+                <h4>Total requests</h4>
+                <strong>${data.total_requests}</strong>
+            </div>
+            <div class="col-span-3 lg:col-span-3 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl">
+                <h4>4xx Error</h4>
+                <strong>${data.requests_4xx_percent}%</strong>
+            </div>
+            <div class="col-span-3 lg:col-span-3 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl">
+                <h4>5xx Error</h4>
+                <strong>${data.requests_5xx_percent}%</strong>
+            </div>
+            <div class="col-span-3 lg:col-span-3 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl">
+                <h4>Unique IPs</h4>
+                <strong>${data.unique_ips}</strong>
+            </div>
+        `;
+
+        let _hosts = '<div class="col-span-6 lg:col-span-6 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl"><h3>Popular hosts_stats</h3>';
+        data.top_hosts.slice(0, 5).forEach(([host, count]) => {
+            const percentage = (count / data.total_requests) * 100;
+            _hosts += `
+                    <div style="margin-bottom: 20px;">
+                        <div style="display: flex; justify-content: space-between;">
+                            <div style="font-size: 14px;">${host}</div>
+                            <div style="font-size: 14px; font-weight: bold;">${count}</div>
+                        </div>
+                        <div style="background-color: #67748e; border-radius: 5px; height: 10px; position: relative; margin-top: 5px;">
+                            <div style="height: 100%; background-color: #f6bf42; border-radius: 5px; width: ${percentage}%;"></div>
+                        </div>
+                    </div>
+            `;
+        });
+        _hosts += '</div>';
+        content.innerHTML += _hosts;
+
+        let _uas = '<div class="col-span-6 lg:col-span-6 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl"><h3>Top User Agents</h3>';
+        data.top_user_agents.slice(0, 5).forEach(([ua, count]) => {
+            const percentage = (count / data.total_requests) * 100;
+            _uas += `
+                    <div style="margin-bottom: 20px;">
+                        <div style="display: flex; justify-content: space-between;">
+                            <div style="font-size: 14px;">${ua}</div>
+                            <div style="font-size: 14px; font-weight: bold;">${count}</div>
+                        </div>
+                        <div style="background-color: #67748e; border-radius: 5px; height: 10px; position: relative; margin-top: 5px;">
+                            <div style="height: 100%; background-color: #f64279; border-radius: 5px; width: ${percentage}%;"></div>
+                        </div>
+                    </div>
+            `;
+        });
+        _uas += '</div>';
+        content.innerHTML += _uas;
+    }
 </script>
 {% endblock content %}

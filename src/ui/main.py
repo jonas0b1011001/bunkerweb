@@ -2153,10 +2153,21 @@ def reports():
         username=current_user.get_id(),
     )
 
-def parse_logs():
+def parse_logs(range="max"):
     log_pattern = re_compile(
         r'(?P<host>\S+) - (?P<status>\d{3}) - (?P<remote_addr>\S+) \[(?P<time_local>[^\]]+)\] "(?P<request>[^"]+)" "(?P<http_user_agent>[^"]+)" (?P<upstream_response_time>\S+)'
     )
+
+    # Berechne den Zeitfilter
+    now = datetime.now()
+    if range == "24hrs":
+        time_limit = now - timedelta(hours=24)
+    elif range == "7d":
+        time_limit = now - timedelta(days=7)
+    elif range == "30d":
+        time_limit = now - timedelta(days=30)
+    else:
+        time_limit = None  # Für "Max" keine Zeitbegrenzung
 
     total_requests = 0
     successful_requests = 0
@@ -2168,16 +2179,21 @@ def parse_logs():
     user_agents = Counter()
     status_codes = Counter()
 
-    logs_access = []
     nginx_access_file = Path(sep, "var", "log", "bunkerweb", "access.log")
     if nginx_access_file.is_file():
         with open(nginx_access_file, encoding="utf-8") as f:
             for line in f.readlines():
                 match = log_pattern.match(line)
                 if match:
-                    total_requests += 1
-
                     data = match.groupdict()
+
+                    # Zeitparsing und Filtern nach dem Zeitlimit
+                    time_local_str = data['time_local'].split()[0]
+                    log_time = datetime.strptime(time_local_str, "%d/%b/%Y:%H:%M:%S")
+                    if time_limit and log_time < time_limit:
+                        continue  # Überspringe Logs, die älter als das Zeitlimit sind
+
+                    total_requests += 1
                     status_code = int(data['status'])
                     host = data['host']
                     ip = data['remote_addr']
@@ -2214,11 +2230,19 @@ def parse_logs():
         'status_codes': status_codes.most_common()
     }
 
+@app.route("/statistics/data", methods=["GET"])
+@login_required
+def api_statistics():
+    range = request.args.get('range', default='max', type=str)
+    
+    log_data = parse_logs(range)
+    
+    return jsonify(log_data)
+
 @app.route("/statistics", methods=["GET"])
 @login_required
 def statistics():
-    log_data = parse_logs()
-    return render_template('statistics.html', data=log_data)
+    return render_template('statistics.html')
 
 @app.route("/bans", methods=["GET", "POST"])
 @login_required
