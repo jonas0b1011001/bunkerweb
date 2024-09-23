@@ -16,6 +16,7 @@ for deps_path in [join(sep, "usr", "share", "bunkerweb", *paths) for paths in ((
         sys_path.append(deps_path)
 
 from bs4 import BeautifulSoup
+from collections import Counter
 from copy import deepcopy
 from datetime import datetime, timedelta, timezone
 from dateutil.parser import parse as dateutil_parse
@@ -2152,6 +2153,61 @@ def reports():
         username=current_user.get_id(),
     )
 
+def parse_logs():
+    # Regex für das Parsing des Log-Eintrags
+    log_pattern = re_compile(
+        r'(?P<host>\S+) - (?P<status>\d{3}) - (?P<remote_addr>\S+) \[(?P<time_local>[^\]]+)\] "(?P<request>[^"]+)" "(?P<http_user_agent>[^"]+)" (?P<upstream_response_time>\S+)'
+    )
+
+    total_requests = 0
+    successful_requests = 0
+    failed_requests = 0
+    hosts = Counter()
+    ips = Counter()
+    user_agents = Counter()
+
+    logs_access = []
+    nginx_access_file = Path(sep, "var", "log", "bunkerweb", "access.log")
+    if nginx_access_file.is_file():
+        with open(nginx_access_file, encoding="utf-8") as f:
+            for line in f.readlines():
+                match = log_pattern.match(line)
+                if match:
+                    total_requests += 1
+
+                    data = match.groupdict()
+                    status_code = int(data['status'])
+                    host = data['host']
+                    ip = data['remote_addr']
+                    user_agent = data['http_user_agent']
+
+                    # Erfolgreiche Anfragen (Statuscode 2xx)
+                    if 200 <= status_code < 300:
+                        successful_requests += 1
+                    else:
+                        failed_requests += 1
+
+                    # Hostname und IP zählen
+                    hosts[host] += 1
+                    ips[ip] += 1
+
+                    # User-Agent zählen
+                    user_agents[user_agent] += 1
+
+    return {
+        'total_requests': total_requests,
+        'successful_requests': successful_requests,
+        'failed_requests': failed_requests,
+        'top_hosts': hosts.most_common(5),
+        'top_ips': ips.most_common(5),
+        'top_user_agents': user_agents.most_common(5)
+    }
+
+@app.route("/statistics", methods=["GET"])
+@login_required
+def statistics():
+    log_data = parse_logs()
+    return render_template('statistics.html', data=log_data)
 
 @app.route("/bans", methods=["GET", "POST"])
 @login_required

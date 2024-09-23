@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="justify-between dark:brightness-110 overflow-hidden hover:scale-102 transition col-span-12 lg:col-span-6 3xl:col-span-4 p-4 w-full shadow-md break-words bg-white dark:bg-slate-850 dark:shadow-dark-xl rounded-2xl bg-clip-border">
+    <h2>Nginx Log-Analyse</h2>
+
+    <p>Gesamtzahl der Anfragen: {{ data.total_requests }}</p>
+    <p>Erfolgreiche Anfragen: {{ data.successful_requests }}</p>
+    <p>Fehlgeschlagene Anfragen: {{ data.failed_requests }}</p>
+</div>
+<div class="justify-between dark:brightness-110 overflow-hidden hover:scale-102 transition col-span-12 lg:col-span-6 3xl:col-span-4 p-4 w-full shadow-md break-words bg-white dark:bg-slate-850 dark:shadow-dark-xl rounded-2xl bg-clip-border">
+
+    <h2>Top 5 Hostnames</h2>
+    <ul>
+    {% for host, count in data.top_hosts %}
+        <li>{{ host }}: {{ count }} Anfragen</li>
+    {% endfor %}
+    </ul>
+</div>
+<div class="justify-between dark:brightness-110 overflow-hidden hover:scale-102 transition col-span-12 lg:col-span-6 3xl:col-span-4 p-4 w-full shadow-md break-words bg-white dark:bg-slate-850 dark:shadow-dark-xl rounded-2xl bg-clip-border">
+    <h2>Top 5 IP-Adressen</h2>
+    <ul>
+    {% for ip, count in data.top_ips %}
+        <li>{{ ip }}: {{ count }} Anfragen</li>
+    {% endfor %}
+    </ul>
+</div>
+<div class="justify-between dark:brightness-110 overflow-hidden hover:scale-102 transition col-span-12 lg:col-span-6 3xl:col-span-4 p-4 w-full shadow-md break-words bg-white dark:bg-slate-850 dark:shadow-dark-xl rounded-2xl bg-clip-border">
+    <h2>Top 5 User-Agents</h2>
+    <ul>
+    {% for agent, count in data.top_user_agents %}
+        <li>{{ agent }}: {{ count }} Anfragen</li>
+    {% endfor %}
+    </ul>
+</div>
+<div class="justify-between dark:brightness-110 overflow-hidden hover:scale-102 transition col-span-12 lg:col-span-6 3xl:col-span-4 p-4 w-full shadow-md break-words bg-white dark:bg-slate-850 dark:shadow-dark-xl rounded-2xl bg-clip-border">
+    <h2>Grafische Darstellung</h2>
+
+    <canvas id="requestsChart"></canvas>
+</div>
+
+<script nonce="{{ script_nonce }}">
+    new Chart("requestsChart", {
+        type: 'bar',
+        data: {
+            labels: ['Erfolgreich', 'Fehlgeschlagen'],
+            datasets: [{
+                label: '# Anfragen',
+                data: [{{ data.successful_requests }}, {{ data.failed_requests }}],
+                backgroundColor: [
+                    'rgba(75, 192, 192, 0.2)',
+                    'rgba(255, 99, 132, 0.2)'
+                ],
+                borderColor: [
+                    'rgba(75, 192, 192, 1)',
+                    'rgba(255, 99, 132, 1)'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+</script>
+{% endblock content %}
