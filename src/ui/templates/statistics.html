@@ -145,6 +145,8 @@
         _asn += '</div>';
         content.innerHTML += _asn;
 
+        content.innerHTML += '<div class="col-span-12 lg:col-span-12 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl"><h4>Requests over Time</h4><canvas id="requestTimelineChart"></canvas></div>';
+
         content.innerHTML += '<div class="col-span-4 lg:col-span-4 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl"><h4>Status Codes</h4><canvas id="statusCodesChart"></canvas></div>';
         content.innerHTML += '<div class="col-span-4 lg:col-span-4 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl"><h4>Top IPs</h4><canvas id="topIPsChart"></canvas></div>';
         
@@ -197,6 +199,41 @@
                     ],
                     borderWidth: 1
                 }]
+            }
+        });
+
+        const ctx = document.getElementById('requestTimelineChart').getContext('2d');
+        const labels = data.request_timeline.map(item => item[0]);  // Zeitpunkte
+        const values = data.request_timeline.map(item => item[1]);  // Anzahl der Requests
+
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,  // Zeitachsen
+                datasets: [{
+                    label: 'Number of Requests',
+                    data: values,  // Anzahl der Requests pro Zeitintervall
+                    fill: false,
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    tension: 0.1  // Glatte Kurvenlinie
+                }]
+            },
+            options: {
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Time'
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'Requests'
+                        },
+                        beginAtZero: true
+                    }
+                }
             }
         });
     }

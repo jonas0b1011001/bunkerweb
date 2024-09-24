@@ -2163,14 +2163,24 @@ def parse_logs(range="max"):
     now = datetime.now()
     if range == "1hr":
         time_limit = now - timedelta(hours=1)
+        time_format = "%H:%M"  # Gruppierung nach Minuten
+        time_step = timedelta(minutes=1)
     elif range == "24hrs":
         time_limit = now - timedelta(hours=24)
+        time_format = "%d/%b %H"  # Gruppierung nach Stunden
+        time_step = timedelta(hours=1)
     elif range == "7d":
         time_limit = now - timedelta(days=7)
+        time_format = "%d/%b %H"  # Gruppierung nach Stunden
+        time_step = timedelta(hours=1)
     elif range == "30d":
         time_limit = now - timedelta(days=30)
+        time_format = "%d/%b"  # Gruppierung nach Tagen
+        time_step = timedelta(days=1)
     else:
-        time_limit = None  # Für "Max" keine Zeitbegrenzung
+        time_limit = None  # Keine Zeitbegrenzung
+        time_format = "%d/%b"  # Standardmäßig nach Tagen gruppieren
+        time_step = timedelta(days=1)
 
     total_requests = 0
     successful_requests = 0
@@ -2181,6 +2191,7 @@ def parse_logs(range="max"):
     ips = Counter()
     user_agents = Counter()
     status_codes = Counter()
+    request_timeline = Counter()  # Zählt Requests pro Zeitintervall
 
     nginx_access_file = Path(sep, "var", "log", "bunkerweb", "access.log")
     asn_reader = maxminddb.Reader(Path(sep, "var", "cache", "bunkerweb", "jobs", "asn.mmdb"))
@@ -2223,6 +2234,10 @@ def parse_logs(range="max"):
                     ips[ip] += 1
                     user_agents[user_agent] += 1
 
+                    # Gruppiere die Requests nach dem definierten Zeitformat
+                    time_key = log_time.strftime(time_format)
+                    request_timeline[time_key] += 1
+
     countries = Counter()
     asns = Counter()
     for itm in ips.most_common():
@@ -2235,8 +2250,20 @@ def parse_logs(range="max"):
     country_reader.close()
     asn_reader.close()
 
+    # Zeitleiste nach dem Zeitfilter komplettieren (mit 0-Werten für fehlende Zeitpunkte)
+    #current_time = now.replace(second=0, microsecond=0)  # Runden auf Minuten/Stunden
+    #while current_time >= (time_limit or now - timedelta(days=30)):  # Standard max-Range auf 30 Tage
+    #    time_key = current_time.strftime(time_format)
+    #    if time_key not in request_timeline:
+    #        request_timeline[time_key] = 0
+    #    current_time -= time_step
+
+    # Sortiere die Timeline nach Zeitpunkten
+    request_timeline = dict(sorted(request_timeline.items()))
+
     return {
         'total_requests': total_requests,
+        'request_timeline': list(request_timeline.items()),  # Zeit-Werte Paare für das Chart
         'successful_requests': successful_requests,
         'failed_requests': failed_requests,
         'requests_4xx_percent': round((requests_4xx / total_requests) * 100, 2) if total_requests > 0 else 0,
