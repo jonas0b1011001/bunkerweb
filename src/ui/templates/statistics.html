@@ -73,7 +73,7 @@
             </div>
         `;
 
-        let _hosts = '<div class="col-span-6 lg:col-span-6 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl"><h4>Popular hosts</h4>';
+        let _hosts = '<div class="col-span-4 lg:col-span-4 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl"><h4>Popular hosts</h4>';
         data.hosts.slice(0, 5).forEach(([host, count]) => {
             const percentage = (count / data.total_requests) * 100;
             _hosts += `
@@ -91,13 +91,13 @@
         _hosts += '</div>';
         content.innerHTML += _hosts;
 
-        let _uas = '<div class="col-span-6 lg:col-span-6 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl"><h4>Top User Agents</h4>';
+        let _uas = '<div class="col-span-4 lg:col-span-4 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl"><h4>Top User Agents</h4>';
         data.user_agents.slice(0, 5).forEach(([ua, count]) => {
             const percentage = (count / data.total_requests) * 100;
             _uas += `
                     <div style="margin-bottom: 20px;">
                         <div style="display: flex; justify-content: space-between;">
-                            <div style="font-size: 14px;">${ua}</div>
+                            <div style="font-size: 14px;" title='${ua}'>${ua.substring(0,30)}</div>
                             <div style="font-size: 14px; font-weight: bold;">${count}</div>
                         </div>
                         <div style="background-color: #67748e; border-radius: 5px; height: 10px; position: relative; margin-top: 5px;">
@@ -109,7 +109,7 @@
         _uas += '</div>';
         content.innerHTML += _uas;
 
-        let _countries = '<div class="col-span-6 lg:col-span-6 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl"><h4>Top Countries</h4>';
+        let _countries = '<div class="col-span-4 lg:col-span-4 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl"><h4>Top Countries</h4>';
         data.countries.slice(0, 5).forEach(([ctry, count]) => {
             const percentage = (count / data.total_requests) * 100;
             _countries += `
@@ -127,7 +127,7 @@
         _countries += '</div>';
         content.innerHTML += _countries;
 
-        let _asn = '<div class="col-span-6 lg:col-span-6 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl"><h4>Top ASN</h4>';
+        let _asn = '<div class="col-span-4 lg:col-span-4 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl"><h4>Top ASN</h4>';
         data.asns.slice(0, 5).forEach(([asn, count]) => {
             const percentage = (count / data.total_requests) * 100;
             _asn += `
@@ -145,11 +145,24 @@
         _asn += '</div>';
         content.innerHTML += _asn;
 
-        content.innerHTML += '<div class="col-span-12 lg:col-span-12 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl"><h4>Requests over Time</h4><canvas id="requestTimelineChart"></canvas></div>';
+        content.innerHTML += '<div class="col-span-8 lg:col-span-8 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl"><h4>Requests over Time</h4><canvas id="requestTimelineChart"></canvas></div>';
 
         content.innerHTML += '<div class="col-span-4 lg:col-span-4 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl"><h4>Status Codes</h4><canvas id="statusCodesChart"></canvas></div>';
         content.innerHTML += '<div class="col-span-4 lg:col-span-4 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl"><h4>Top IPs</h4><canvas id="topIPsChart"></canvas></div>';
         
+        const colors = [
+            'rgba(54, 162, 235, 1)',   // Blau
+            'rgba(255, 99, 132, 1)',   // Rot
+            'rgba(255, 206, 86, 1)',   // Gelb
+            'rgba(75, 192, 192, 1)',   // Grün
+            'rgba(153, 102, 255, 1)',  // Lila
+            'rgba(255, 159, 64, 1)',   // Orange
+            'rgba(50, 205, 50, 1)',    // Dunkelgrün
+            'rgba(0, 255, 255, 1)',    // Cyan
+            'rgba(178, 34, 34, 1)',    // Dunkelrot
+            'rgba(139, 69, 19, 1)'     // Braun
+        ];
+
         new Chart(document.getElementById('statusCodesChart'), {
             type: 'doughnut',
             data: {
@@ -157,20 +170,8 @@
                 datasets: [{
                     label: 'Status-Codes',
                     data: data.status_codes.map((x) => x[1]),
-                    backgroundColor: [
-                        'rgba(75, 192, 192, 0.2)',
-                        'rgba(255, 99, 132, 0.2)',
-                        'rgba(54, 162, 235, 0.2)',
-                        'rgba(153, 102, 255, 0.2)',
-                        'rgba(255, 159, 64, 0.2)'
-                    ],
-                    borderColor: [
-                        'rgba(75, 192, 192, 1)',
-                        'rgba(255, 99, 132, 1)',
-                        'rgba(54, 162, 235, 1)',
-                        'rgba(153, 102, 255, 1)',
-                        'rgba(255, 159, 64, 1)'
-                    ],
+                    backgroundColor: colors,
+                    borderColor: colors,
                     borderWidth: 1
                 }]
             }
