@@ -20,7 +20,7 @@
 <script nonce="{{ script_nonce }}">
     let updateInterval = 60;  // Update-Intervall (in Sekunden)
     let timeLeft = updateInterval;  // Zeit bis zur nächsten Aktualisierung
-    let activeRange = '24hrs';  // Standardmäßig 24 Stunden als ausgewählter Filter
+    let activeRange = 'max';  // Standardmäßig 24 Stunden als ausgewählter Filter
     let timer;  // Referenz für das setInterval
 
     document.querySelectorAll('.time-filter').forEach(button => {
@@ -74,7 +74,7 @@
         `;
 
         let _hosts = '<div class="col-span-6 lg:col-span-6 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl"><h4>Popular hosts</h4>';
-        data.top_hosts.slice(0, 5).forEach(([host, count]) => {
+        data.hosts.slice(0, 5).forEach(([host, count]) => {
             const percentage = (count / data.total_requests) * 100;
             _hosts += `
                     <div style="margin-bottom: 20px;">
@@ -92,7 +92,7 @@
         content.innerHTML += _hosts;
 
         let _uas = '<div class="col-span-6 lg:col-span-6 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl"><h4>Top User Agents</h4>';
-        data.top_user_agents.slice(0, 5).forEach(([ua, count]) => {
+        data.user_agents.slice(0, 5).forEach(([ua, count]) => {
             const percentage = (count / data.total_requests) * 100;
             _uas += `
                     <div style="margin-bottom: 20px;">
@@ -108,6 +108,42 @@
         });
         _uas += '</div>';
         content.innerHTML += _uas;
+
+        let _countries = '<div class="col-span-6 lg:col-span-6 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl"><h4>Top Countries</h4>';
+        data.countries.slice(0, 5).forEach(([ctry, count]) => {
+            const percentage = (count / data.total_requests) * 100;
+            _countries += `
+                    <div style="margin-bottom: 20px;">
+                        <div style="display: flex; justify-content: space-between;">
+                            <div style="font-size: 14px;">${ctry}</div>
+                            <div style="font-size: 14px; font-weight: bold;">${count}</div>
+                        </div>
+                        <div style="background-color: #67748e; border-radius: 5px; height: 10px; position: relative; margin-top: 5px;">
+                            <div style="height: 100%; background-color: #42f6bf; border-radius: 5px; width: ${percentage}%;"></div>
+                        </div>
+                    </div>
+            `;
+        });
+        _countries += '</div>';
+        content.innerHTML += _countries;
+
+        let _asn = '<div class="col-span-6 lg:col-span-6 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl"><h4>Top ASN</h4>';
+        data.asns.slice(0, 5).forEach(([asn, count]) => {
+            const percentage = (count / data.total_requests) * 100;
+            _asn += `
+                    <div style="margin-bottom: 20px;">
+                        <div style="display: flex; justify-content: space-between;">
+                            <div style="font-size: 14px;">${asn}</div>
+                            <div style="font-size: 14px; font-weight: bold;">${count}</div>
+                        </div>
+                        <div style="background-color: #67748e; border-radius: 5px; height: 10px; position: relative; margin-top: 5px;">
+                            <div style="height: 100%; background-color: #4279f6; border-radius: 5px; width: ${percentage}%;"></div>
+                        </div>
+                    </div>
+            `;
+        });
+        _asn += '</div>';
+        content.innerHTML += _asn;
 
         content.innerHTML += '<div class="col-span-4 lg:col-span-4 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl"><h4>Status Codes</h4><canvas id="statusCodesChart"></canvas></div>';
         content.innerHTML += '<div class="col-span-4 lg:col-span-4 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl"><h4>Top IPs</h4><canvas id="topIPsChart"></canvas></div>';
@@ -141,10 +177,10 @@
         new Chart(document.getElementById('topIPsChart'), {
             type: 'doughnut',
             data: {
-                labels: data.top_ips.map((x) => x[0]),
+                labels: data.ips.slice(0, 5).map((x) => x[0]),
                 datasets: [{
                     label: 'Top IPs',
-                    data: data.top_ips.map((x) => x[1]),
+                    data: data.ips.slice(0, 5).map((x) => x[1]),
                     backgroundColor: [
                         'rgba(75, 192, 192, 0.2)',
                         'rgba(255, 99, 132, 0.2)',

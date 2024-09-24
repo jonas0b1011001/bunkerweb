@@ -45,6 +45,7 @@ from tempfile import NamedTemporaryFile
 from time import sleep, time
 from werkzeug.utils import secure_filename
 from zipfile import BadZipFile, ZipFile
+import maxminddb
 
 from src.Instances import Instances
 from src.ConfigFiles import ConfigFiles
@@ -2182,6 +2183,9 @@ def parse_logs(range="max"):
     status_codes = Counter()
 
     nginx_access_file = Path(sep, "var", "log", "bunkerweb", "access.log")
+    asn_reader = maxminddb.Reader(Path(sep, "var", "cache", "bunkerweb", "jobs", "asn.mmdb"))
+    country_reader = maxminddb.Reader(Path(sep, "var", "cache", "bunkerweb", "jobs", "country.mmdb"))
+    
     if nginx_access_file.is_file():
         with open(nginx_access_file, encoding="utf-8") as f:
             for line in f.readlines():
@@ -2219,6 +2223,18 @@ def parse_logs(range="max"):
                     ips[ip] += 1
                     user_agents[user_agent] += 1
 
+    countries = Counter()
+    asns = Counter()
+    for itm in ips.most_common():
+        ctry = country_reader.get(itm[0])
+        asn = asn_reader.get(itm[0])
+        if ctry is not None:
+            countries[ctry["country"]["iso_code"]] += itm[1]
+        if asn is not None:
+            asns[f"{asn['autonomous_system_organization']} ({asn['autonomous_system_number']})"] += itm[1]
+    country_reader.close()
+    asn_reader.close()
+
     return {
         'total_requests': total_requests,
         'successful_requests': successful_requests,
@@ -2226,10 +2242,12 @@ def parse_logs(range="max"):
         'requests_4xx_percent': round((requests_4xx / total_requests) * 100, 2) if total_requests > 0 else 0,
         'requests_5xx_percent': round((requests_5xx / total_requests) * 100, 2) if total_requests > 0 else 0,
         'unique_ips': len(ips),
-        'top_hosts': hosts.most_common(),
-        'top_ips': ips.most_common(10),
-        'top_user_agents': user_agents.most_common(),
-        'status_codes': status_codes.most_common()
+        'hosts': hosts.most_common(),
+        'ips': ips.most_common(),
+        'user_agents': user_agents.most_common(),
+        'status_codes': status_codes.most_common(),
+        'countries': countries.most_common(),
+        'asns': asns.most_common()
     }
 
 @app.route("/statistics/data", methods=["GET"])
