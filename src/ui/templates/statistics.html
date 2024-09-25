@@ -204,6 +204,10 @@
         });
 
         const ctx = document.getElementById('requestTimelineChart').getContext('2d');
+        data.request_timeline.sort(function(a, b){return Date.parse(a[0]) - Date.parse(b[0])});
+        while (data.request_timeline[0][1] == 0) {
+            data.request_timeline.shift();
+        }
         const labels = data.request_timeline.map(item => item[0]);  // Zeitpunkte
         const values = data.request_timeline.map(item => item[1]);  // Anzahl der Requests
 

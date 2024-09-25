@@ -2167,19 +2167,19 @@ def parse_logs(range="max"):
         time_step = timedelta(minutes=1)
     elif range == "24hrs":
         time_limit = now - timedelta(hours=24)
-        time_format = "%d/%b %H"  # Gruppierung nach Stunden
+        time_format = "%d/%b/%Y %H:00"  # Gruppierung nach Stunden
         time_step = timedelta(hours=1)
     elif range == "7d":
         time_limit = now - timedelta(days=7)
-        time_format = "%d/%b %H"  # Gruppierung nach Stunden
+        time_format = "%d/%b/%Y %H:00"  # Gruppierung nach Stunden
         time_step = timedelta(hours=1)
     elif range == "30d":
         time_limit = now - timedelta(days=30)
-        time_format = "%d/%b"  # Gruppierung nach Tagen
+        time_format = "%d/%b/%Y"  # Gruppierung nach Tagen
         time_step = timedelta(days=1)
     else:
         time_limit = None  # Keine Zeitbegrenzung
-        time_format = "%d/%b"  # Standardmäßig nach Tagen gruppieren
+        time_format = "%d/%b/%Y"  # Standardmäßig nach Tagen gruppieren
         time_step = timedelta(days=1)
 
     total_requests = 0
@@ -2251,15 +2251,15 @@ def parse_logs(range="max"):
     asn_reader.close()
 
     # Zeitleiste nach dem Zeitfilter komplettieren (mit 0-Werten für fehlende Zeitpunkte)
-    #current_time = now.replace(second=0, microsecond=0)  # Runden auf Minuten/Stunden
-    #while current_time >= (time_limit or now - timedelta(days=30)):  # Standard max-Range auf 30 Tage
-    #    time_key = current_time.strftime(time_format)
-    #    if time_key not in request_timeline:
-    #        request_timeline[time_key] = 0
-    #    current_time -= time_step
-
+    current_time = now.replace(second=0, microsecond=0)  # Runden auf Minuten/Stunden
+    while current_time >= (time_limit or now - timedelta(days=30)):  # Standard max-Range auf 30 Tage
+        time_key = current_time.strftime(time_format)
+        if time_key not in request_timeline:
+            request_timeline[time_key] = 0
+        current_time -= time_step
+    
     # Sortiere die Timeline nach Zeitpunkten
-    request_timeline = dict(sorted(request_timeline.items()))
+     #request_timeline = dict(sorted(request_timeline.items()))
 
     return {
         'total_requests': total_requests,
