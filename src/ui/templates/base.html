@@ -12,10 +12,7 @@
                  alt="main logo" />
         </div>
         {% include "menu.html" %}
-        {% include "news.html" %}
-        {% include "flashs.html"
-        %}
-        {% include "banner.html" %}
+        {% include "flashs.html"%}
         <div class="w-full relative h-full max-h-screen transition-all duration-200 ease-in-out xl:ml-68 rounded-xl">
             {% include "header.html" %}
         </div>
@@ -26,7 +23,6 @@
                      data-global-is-readonly="{% if is_readonly %}true{% else %}false{% endif %}"></div>
                 {% block content %}{% endblock %}
             </div>
-            {% include "footer.html" %}
         </main>
         <!-- end info -->
         {% with messages = get_flashed_messages(with_categories=true) %}
