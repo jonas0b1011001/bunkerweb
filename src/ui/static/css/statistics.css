@@ -13,16 +13,6 @@
     color: white;
 }
 
-.edit-btn {
-    padding: 10px 20px;
-    background-color: #f1f1f1;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-    margin-right: 10px;
-}
-
 .statistics-item.parked {
     border: 2px solid red;  /* Roter Rahmen für ausgeblendete Divs */
     opacity: 0.6;  /* Leichte Transparenz für visuelles Feedback */
