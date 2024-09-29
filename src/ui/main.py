@@ -2174,6 +2174,7 @@ def process_chunk(file_path, start, size, time_limit, time_format, time_step):
     user_agents = Counter()
     status_codes = Counter()
     request_timeline = Counter()
+    failed_uris = Counter()
 
     with open(file_path, 'r', encoding='utf-8') as f:
         f.seek(start)
@@ -2195,6 +2196,7 @@ def process_chunk(file_path, start, size, time_limit, time_format, time_step):
                 host = data['host']
                 ip = data['remote_addr']
                 user_agent = data['http_user_agent']
+                uri = data['request'].split(" ")[1]
 
                 # Erfolgreiche Anfragen (Statuscode 2xx)
                 if status_code < 399:
@@ -2202,6 +2204,8 @@ def process_chunk(file_path, start, size, time_limit, time_format, time_step):
                 elif 400 <= status_code < 500:
                     requests_4xx += 1
                     failed_requests += 1
+                    if status_code == 404:
+                        failed_uris[host + uri] += 1
                 elif 500 <= status_code < 600:
                     requests_5xx += 1
                     failed_requests += 1
@@ -2218,7 +2222,7 @@ def process_chunk(file_path, start, size, time_limit, time_format, time_step):
                 time_key = log_time.strftime(time_format)
                 request_timeline[time_key] += 1
 
-    return (total_requests, successful_requests, failed_requests, requests_4xx, requests_5xx,
+    return (total_requests, successful_requests, failed_requests, requests_4xx, requests_5xx, failed_uris,
             hosts, ips, user_agents, status_codes, request_timeline)
 
 def get_file_size(file_path):
@@ -2284,6 +2288,7 @@ def parse_logs_in_parallel(range="max", num_processes=4):
     failed_requests = 0
     requests_4xx = 0
     requests_5xx = 0
+    failed_uris = Counter()
     hosts = Counter()
     ips = Counter()
     user_agents = Counter()
@@ -2291,7 +2296,7 @@ def parse_logs_in_parallel(range="max", num_processes=4):
     request_timeline = Counter()
 
     for result in results:
-        (total_r, successful_r, failed_r, req_4xx, req_5xx, host_counter,
+        (total_r, successful_r, failed_r, req_4xx, req_5xx, failed_uris_counter, host_counter,
          ip_counter, ua_counter, status_counter, timeline) = result
 
         total_requests += total_r
@@ -2300,6 +2305,7 @@ def parse_logs_in_parallel(range="max", num_processes=4):
         requests_4xx += req_4xx
         requests_5xx += req_5xx
 
+        failed_uris.update(failed_uris_counter)
         hosts.update(host_counter)
         ips.update(ip_counter)
         user_agents.update(ua_counter)
@@ -2340,7 +2346,8 @@ def parse_logs_in_parallel(range="max", num_processes=4):
         'user_agents': user_agents.most_common(),
         'status_codes': status_codes.most_common(),
         'countries': countries.most_common(),
-        'asns': asns.most_common()
+        'asns': asns.most_common(),
+        'failed_uris': failed_uris.most_common()
     }
 
 @app.route("/statistics/data", methods=["GET"])

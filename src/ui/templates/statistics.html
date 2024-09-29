@@ -24,9 +24,10 @@
         <div id="top_useragents_container" class="statistics-item col-span-6 lg:col-span-4 p-4 hover:scale-102 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl" data-id="5"></div>
         <div id="top_countries_container" class="statistics-item col-span-6 lg:col-span-4 p-4 hover:scale-102 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl" data-id="6"></div>
         <div id="top_asns_container" class="statistics-item col-span-6 lg:col-span-4 p-4 hover:scale-102 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl" data-id="7"></div>
-        <div id="requests_container" class="statistics-item col-span-12 lg:col-span-8 p-4 hover:scale-102 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl" data-id="8"><h4>Requests over Time</h4><canvas id="requestTimelineChart"></canvas></div>
-        <div id="statuscodes_container" class="statistics-item col-span-6 lg:col-span-4 p-4 hover:scale-102 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl" data-id="9"><h4>Status Codes</h4><canvas id="statusCodesChart"></canvas></div>
-        <div id="top_ips_container" class="statistics-item col-span-6 lg:col-span-4 p-4 hover:scale-102 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl" data-id="10"><h4>Top IPs</h4><canvas id="topIPsChart"></canvas></div>
+        <div id="top_404_uris_container" class="statistics-item col-span-6 lg:col-span-4 p-4 hover:scale-102 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl" data-id="8"><h4>Top 404</h4><canvas id="top404Chart"></canvas></div>
+        <div id="requests_container" class="statistics-item col-span-12 lg:col-span-8 p-4 hover:scale-102 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl" data-id="9"><h4>Requests over Time</h4><canvas id="requestTimelineChart"></canvas></div>
+        <div id="statuscodes_container" class="statistics-item col-span-6 lg:col-span-4 p-4 hover:scale-102 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl" data-id="10"><h4>Status Codes</h4><canvas id="statusCodesChart"></canvas></div>
+        <div id="top_ips_container" class="statistics-item col-span-6 lg:col-span-4 p-4 hover:scale-102 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl" data-id="11"><h4>Top IPs</h4><canvas id="topIPsChart"></canvas></div>
     </div>
 </div>
 <div id="hidden-items" class="col-span-12 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl">
@@ -43,6 +44,7 @@
     let statuscode_chart;
     let ip_chart;
     let requests_chart;
+    let uri_404_chart;
 
     let hidden = localStorage.getItem('hidden') || '';
     hidden.split('|').forEach(dataid => {
@@ -244,6 +246,19 @@
                 datasets: [{
                     label: 'Top IPs',
                     data: data.ips.slice(0, 5).map((x) => x[1]),
+                    backgroundColor: colors,
+                    borderColor: colors
+                }]
+            }
+        });
+
+        uri_404_chart?.destroy();
+        uri_404_chart = new Chart(document.getElementById('top404Chart'), {
+            type: 'doughnut',
+            data: {
+                labels: data.failed_uris.slice(0, 5).map((x) => x[0]),
+                datasets: [{
+                    data: data.failed_uris.slice(0, 5).map((x) => x[1]),
                     backgroundColor: colors,
                     borderColor: colors
                 }]
