@@ -10,23 +10,23 @@
         <button class="time-filter" data-range="7d">7 Days</button>
         <button class="time-filter" data-range="30d">30 Days</button>
         <button class="time-filter active" data-range="max">Max</button>
-        <button class="edit-btn" id="toggle-edit-mode-btn">⚙️</button>
+        <button class="customize-btn" id="toggle-edit-mode">⚙️</button>
     </div>
 </div>
 
 <div class="col-span-12 lg:col-span-12">
     <div id="statistics-content" class="grid grid-cols-12 gap-4">
-        <div id="total_requests_container" class="statistics-item col-span-3 lg:col-span-3 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl" data-id="0"></div>
-        <div id="4xx_error_container" class="statistics-item col-span-3 lg:col-span-3 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl" data-id="1"></div>
-        <div id="5xx_error_container" class="statistics-item col-span-3 lg:col-span-3 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl" data-id="2"></div>
-        <div id="unique_ips_container" class="statistics-item col-span-3 lg:col-span-3 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl" data-id="3"></div>
-        <div id="top_hosts_container" class="statistics-item col-span-6 lg:col-span-4 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl" data-id="4"></div>
-        <div id="top_useragents_container" class="statistics-item col-span-6 lg:col-span-4 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl" data-id="5"></div>
-        <div id="top_countries_container" class="statistics-item col-span-6 lg:col-span-4 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl" data-id="6"></div>
-        <div id="top_asns_container" class="statistics-item col-span-6 lg:col-span-4 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl" data-id="7"></div>
-        <div id="requests_container" class="statistics-item col-span-12 lg:col-span-8 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl" data-id="8"><h4>Requests over Time</h4><canvas id="requestTimelineChart"></canvas></div>
-        <div id="statuscodes_container" class="statistics-item col-span-6 lg:col-span-4 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl" data-id="9"><h4>Status Codes</h4><canvas id="statusCodesChart"></canvas></div>
-        <div id="top_ips_container" class="statistics-item col-span-6 lg:col-span-4 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl" data-id="10"><h4>Top IPs</h4><canvas id="topIPsChart"></canvas></div>
+        <div id="total_requests_container" class="statistics-item col-span-3 lg:col-span-3 p-4 hover:scale-102 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl" data-id="0" style="text-align:center"></div>
+        <div id="4xx_error_container" class="statistics-item col-span-3 lg:col-span-3 p-4 hover:scale-102 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl" data-id="1" style="text-align:center"></div>
+        <div id="5xx_error_container" class="statistics-item col-span-3 lg:col-span-3 p-4 hover:scale-102 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl" data-id="2" style="text-align:center"></div>
+        <div id="unique_ips_container" class="statistics-item col-span-3 lg:col-span-3 p-4 hover:scale-102 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl" data-id="3" style="text-align:center"></div>
+        <div id="top_hosts_container" class="statistics-item col-span-6 lg:col-span-4 p-4 hover:scale-102 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl" data-id="4"></div>
+        <div id="top_useragents_container" class="statistics-item col-span-6 lg:col-span-4 p-4 hover:scale-102 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl" data-id="5"></div>
+        <div id="top_countries_container" class="statistics-item col-span-6 lg:col-span-4 p-4 hover:scale-102 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl" data-id="6"></div>
+        <div id="top_asns_container" class="statistics-item col-span-6 lg:col-span-4 p-4 hover:scale-102 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl" data-id="7"></div>
+        <div id="requests_container" class="statistics-item col-span-12 lg:col-span-8 p-4 hover:scale-102 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl" data-id="8"><h4>Requests over Time</h4><canvas id="requestTimelineChart"></canvas></div>
+        <div id="statuscodes_container" class="statistics-item col-span-6 lg:col-span-4 p-4 hover:scale-102 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl" data-id="9"><h4>Status Codes</h4><canvas id="statusCodesChart"></canvas></div>
+        <div id="top_ips_container" class="statistics-item col-span-6 lg:col-span-4 p-4 hover:scale-102 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl" data-id="10"><h4>Top IPs</h4><canvas id="topIPsChart"></canvas></div>
     </div>
 </div>
 <div id="hidden-items" class="col-span-12 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl">
@@ -44,7 +44,7 @@
     let ip_chart;
     let requests_chart;
 
-    let hidden = localStorage.getItem('hidden') || [];
+    let hidden = localStorage.getItem('hidden') || '';
     hidden.split('|').forEach(dataid => {
         let temp = document.querySelector(`[data-id="${dataid}"]`);
         if (temp){
@@ -244,21 +244,8 @@
                 datasets: [{
                     label: 'Top IPs',
                     data: data.ips.slice(0, 5).map((x) => x[1]),
-                    backgroundColor: [
-                        'rgba(75, 192, 192, 0.2)',
-                        'rgba(255, 99, 132, 0.2)',
-                        'rgba(54, 162, 235, 0.2)',
-                        'rgba(153, 102, 255, 0.2)',
-                        'rgba(255, 159, 64, 0.2)'
-                    ],
-                    borderColor: [
-                        'rgba(75, 192, 192, 1)',
-                        'rgba(255, 99, 132, 1)',
-                        'rgba(54, 162, 235, 1)',
-                        'rgba(153, 102, 255, 1)',
-                        'rgba(255, 159, 64, 1)'
-                    ],
-                    borderWidth: 1
+                    backgroundColor: colors,
+                    borderColor: colors
                 }]
             }
         });
@@ -399,7 +386,7 @@
     }
 
     // Initialer Aufruf, um den Editiermodus hinzuzufügen
-    document.getElementById('toggle-edit-mode-btn').addEventListener('click', toggleEditMode);
+    document.getElementById('toggle-edit-mode').addEventListener('click', toggleEditMode);
 
     // Parkbereich standardmäßig ausblenden
     document.getElementById('hidden-items').style.display = 'none';

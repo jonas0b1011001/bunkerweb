@@ -8,9 +8,30 @@
     margin-right: 10px;
 }
 
+.time-filter:hover {
+    background-color: #1e5f34;
+    transition: background-color 0.3s ease;
+}
+
 .time-filter.active {
     background-color: #2f833a;
     color: white;
+}
+
+.customize-btn {
+    padding: 10px 20px;
+    background-color: #cb8f34;
+    border: none;
+    border-radius: .5rem;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    margin-right: 10px;
+    float: right;
+}
+
+.customize-btn:hover {
+    background-color: #e9a43c;
+    transition: background-color 0.3s ease;
 }
 
 .statistics-item.parked {
