@@ -1,15 +1,15 @@
 .time-filter {
     padding: 10px 20px;
-    background-color: #f1f1f1;
+    background-color: #1e2c5f;
     border: none;
-    border-radius: 5px;
+    border-radius: .5rem;
     cursor: pointer;
     transition: background-color 0.3s ease;
     margin-right: 10px;
 }
 
 .time-filter.active {
-    background-color: #4BC0C0;
+    background-color: #2f833a;
     color: white;
 }
 
@@ -28,15 +28,20 @@
 
 /* Editierbare Divs im Editiermodus hervorheben */
 .editable {
-    border: 2px dashed blue;
+    border: 2px dashed rgb(167, 167, 167);
 }
 
 .toggle-visibility-btn {
     display: none;
-    margin-top: 10px;
     padding: 5px;
+    border-radius: 5px;
     background-color: #f44336;
     color: white;
     border: none;
     cursor: pointer;
+}
+
+.toggle-visibility-btn.parked {
+    background-color: #36f44f;
+    color: black;
 }

@@ -29,7 +29,7 @@
         <div id="top_ips_container" class="statistics-item col-span-6 lg:col-span-4 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl" data-id="10"><h4>Top IPs</h4><canvas id="topIPsChart"></canvas></div>
     </div>
 </div>
-<div id="hidden-items" class="col-span-12 p-4 w-full bg-gray-200 shadow-md rounded-2xl">
+<div id="hidden-items" class="col-span-12 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl">
     <h4>Hidden Items</h4>
     <div id="parked-items" class="grid grid-cols-12 gap-4"></div>
 </div>
@@ -354,6 +354,8 @@
                 const newToggleButton = document.createElement('button');
                 newToggleButton.innerText = !div.classList.contains('parked') ? 'Hide' : 'Show';
                 newToggleButton.classList.add('toggle-visibility-btn');
+                if (div.classList.contains('parked'))
+                newToggleButton.classList.add('parked');
                 newToggleButton.addEventListener('click', function() {
                     if (!div.classList.contains('parked')) {
                         // Element verstecken (ins Parkbereich verschieben)
@@ -361,6 +363,7 @@
                         document.getElementById('parked-items').appendChild(div);
                         div.style.display = 'block';  // Im Parkbereich sichtbar, aber mit rotem Rahmen
                         div.classList.add('parked');
+                        newToggleButton.classList.add('parked')
                         newToggleButton.innerText = 'Show';
                     } else {
                         // Element wieder sichtbar machen (ins Hauptbereich verschieben)
@@ -368,6 +371,7 @@
                         document.getElementById('statistics-content').appendChild(div);
                         div.style.display = 'block';  // Im Hauptbereich sichtbar
                         div.classList.remove('parked');
+                        newToggleButton.classList.remove('parked');
                         newToggleButton.innerText = 'Hide';
                     }
                     sortable_main.save();
