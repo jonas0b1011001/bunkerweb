@@ -16,17 +16,17 @@
 
 <div class="col-span-12 lg:col-span-12">
     <div id="statistics-content" class="grid grid-cols-12 gap-4">
-        <div id="total_requests_container" class="statistics-item col-span-3 lg:col-span-3 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl"></div>
-        <div id="4xx_error_container" class="statistics-item col-span-3 lg:col-span-3 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl"></div>
-        <div id="5xx_error_container" class="statistics-item col-span-3 lg:col-span-3 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl"></div>
-        <div id="unique_ips_container" class="statistics-item col-span-3 lg:col-span-3 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl"></div>
-        <div id="top_hosts_container" class="statistics-item col-span-6 lg:col-span-4 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl"></div>
-        <div id="top_useragents_container" class="statistics-item col-span-6 lg:col-span-4 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl"></div>
-        <div id="top_countries_container" class="statistics-item col-span-6 lg:col-span-4 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl"></div>
-        <div id="top_asns_container" class="statistics-item col-span-6 lg:col-span-4 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl"></div>
-        <div id="requests_container" class="statistics-item col-span-12 lg:col-span-8 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl"><h4>Requests over Time</h4><canvas id="requestTimelineChart"></canvas></div>
-        <div id="statuscodes_container" class="statistics-item col-span-6 lg:col-span-4 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl"><h4>Status Codes</h4><canvas id="statusCodesChart"></canvas></div>
-        <div id="top_ips_container" class="statistics-item col-span-6 lg:col-span-4 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl"><h4>Top IPs</h4><canvas id="topIPsChart"></canvas></div>
+        <div id="total_requests_container" class="statistics-item col-span-3 lg:col-span-3 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl" data-id="0"></div>
+        <div id="4xx_error_container" class="statistics-item col-span-3 lg:col-span-3 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl" data-id="1"></div>
+        <div id="5xx_error_container" class="statistics-item col-span-3 lg:col-span-3 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl" data-id="2"></div>
+        <div id="unique_ips_container" class="statistics-item col-span-3 lg:col-span-3 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl" data-id="3"></div>
+        <div id="top_hosts_container" class="statistics-item col-span-6 lg:col-span-4 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl" data-id="4"></div>
+        <div id="top_useragents_container" class="statistics-item col-span-6 lg:col-span-4 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl" data-id="5"></div>
+        <div id="top_countries_container" class="statistics-item col-span-6 lg:col-span-4 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl" data-id="6"></div>
+        <div id="top_asns_container" class="statistics-item col-span-6 lg:col-span-4 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl" data-id="7"></div>
+        <div id="requests_container" class="statistics-item col-span-12 lg:col-span-8 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl" data-id="8"><h4>Requests over Time</h4><canvas id="requestTimelineChart"></canvas></div>
+        <div id="statuscodes_container" class="statistics-item col-span-6 lg:col-span-4 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl" data-id="9"><h4>Status Codes</h4><canvas id="statusCodesChart"></canvas></div>
+        <div id="top_ips_container" class="statistics-item col-span-6 lg:col-span-4 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl" data-id="10"><h4>Top IPs</h4><canvas id="topIPsChart"></canvas></div>
     </div>
 </div>
 <div id="hidden-items" class="col-span-12 p-4 w-full bg-gray-200 shadow-md rounded-2xl">
@@ -43,16 +43,68 @@
     let statuscode_chart;
     let ip_chart;
     let requests_chart;
+
+    let hidden = localStorage.getItem('hidden') || [];
+    hidden.split('|').forEach(dataid => {
+        let temp = document.querySelector(`[data-id="${dataid}"]`);
+        if (temp){
+            temp.style.display = 'none';
+            document.getElementById('parked-items').appendChild(temp);
+            temp.style.display = 'block';  // Im Parkbereich sichtbar, aber mit rotem Rahmen
+            temp.classList.add('parked');
+        }
+    });
+
     let sortable_main = Sortable.create(document.getElementById('statistics-content'), {
-                group: 'shared',  // Elemente können zwischen den Bereichen verschoben werden
-                disabled: true,
-                animation: 150
-            });
+        group: 'stats',  // Elemente können zwischen den Bereichen verschoben werden
+        disabled: true,
+        store: {
+                /**
+                 * Get the order of elements. Called once during initialization.
+                 * @param   {Sortable}  sortable
+                 * @returns {Array}
+                 */
+                get: function (sortable) {
+                    var order = localStorage.getItem(sortable.options.group.name);
+                    return order ? order.split('|') : [];
+                },
+
+                /**
+                 * Save the order of elements. Called onEnd (when the item is dropped).
+                 * @param {Sortable}  sortable
+                 */
+                set: function (sortable) {
+                    var order = sortable.toArray();
+                    localStorage.setItem(sortable.options.group.name, order.join('|'));
+                }
+        },
+        animation: 150
+    });
 
     // Parkbereich Sortable machen
     let sortable_hidden = Sortable.create(document.getElementById('parked-items'), {
-        group: 'shared',  // Erlaubt das Verschieben von Elementen zwischen Parkbereich und Hauptbereich
+        group: 'hidden',  // Erlaubt das Verschieben von Elementen zwischen Parkbereich und Hauptbereich
         disabled: true,
+        store: {
+                    /**
+                     * Get the order of elements. Called once during initialization.
+                     * @param   {Sortable}  sortable
+                     * @returns {Array}
+                     */
+                     get: function (sortable) {
+                        var order = localStorage.getItem(sortable.options.group.name);
+                        return order ? order.split('|') : [];
+                    },
+
+                    /**
+                     * Save the order of elements. Called onEnd (when the item is dropped).
+                     * @param {Sortable}  sortable
+                     */
+                    set: function (sortable) {
+                        var order = sortable.toArray();
+                        localStorage.setItem(sortable.options.group.name, order.join('|'));
+                    }
+                },
         animation: 150
     });
 
@@ -300,7 +352,7 @@
             // Falls kein Toggle-Button existiert, fügen wir ihn hinzu
             if (!toggleButton) {
                 const newToggleButton = document.createElement('button');
-                newToggleButton.innerText = 'Hide';
+                newToggleButton.innerText = !div.classList.contains('parked') ? 'Hide' : 'Show';
                 newToggleButton.classList.add('toggle-visibility-btn');
                 newToggleButton.addEventListener('click', function() {
                     if (!div.classList.contains('parked')) {
@@ -318,6 +370,8 @@
                         div.classList.remove('parked');
                         newToggleButton.innerText = 'Hide';
                     }
+                    sortable_main.save();
+                    sortable_hidden.save();
                 });
                 div.prepend(newToggleButton);
             }
