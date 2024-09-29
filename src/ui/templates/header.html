@@ -1,7 +1,7 @@
 {% set current_endpoint = current_endpoint or url_for(request.endpoint)[1:].split("/")[-1].strip().replace('_', ' ').replace('-', ' ') %}
 <!-- header -->
 <header class="relative flex flex-wrap items-center justify-between px-0 pb-2 sm:mx-6 transition-all ease-in shadow-none duration-250 rounded-2xl lg:flex-nowrap lg:justify-start">
-    <div class="flex items-center justify-between w-full px-4 py-1 mx-auto flex-wrap-inherit">
+    <div class="flex items-center justify-between w-full px-4 py-1 mx-auto flex-wrap-inherit" style="margin-top: 16px;">
         <nav>
             <!-- breadcrumb -->
             <h6 class="mb-0 text-lg font-bold text-white capitalize">{{ current_endpoint }}</h6>
