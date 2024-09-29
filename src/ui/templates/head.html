@@ -38,7 +38,8 @@
     {% elif current_endpoint == "reports" %}
         <script type="module" src="js/reports.js" nonce="{{ script_nonce }}"></script>
     {% elif current_endpoint == "statistics" %}
-        <script src="js/chart.js" nonce="{{ script_nonce }}"></script>
+    <script src="js/chart.js" nonce="{{ script_nonce }}"></script>
+    <script src="js/sortable.min.js" nonce="{{ script_nonce }}"></script>
         <link rel="stylesheet" href="css/statistics.css" />
     {% elif current_endpoint == "bans" %}
         <link rel="stylesheet" href="css/flatpickr.css" />

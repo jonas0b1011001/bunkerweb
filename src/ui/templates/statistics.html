@@ -10,18 +10,51 @@
         <button class="time-filter" data-range="7d">7 Days</button>
         <button class="time-filter" data-range="30d">30 Days</button>
         <button class="time-filter active" data-range="max">Max</button>
+        <button class="edit-btn" id="toggle-edit-mode-btn">⚙️</button>
     </div>
 </div>
 
 <div class="col-span-12 lg:col-span-12">
-    <div id="statistics-content" class="grid grid-cols-12 gap-4"></div>
+    <div id="statistics-content" class="grid grid-cols-12 gap-4">
+        <div id="total_requests_container" class="statistics-item col-span-3 lg:col-span-3 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl"></div>
+        <div id="4xx_error_container" class="statistics-item col-span-3 lg:col-span-3 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl"></div>
+        <div id="5xx_error_container" class="statistics-item col-span-3 lg:col-span-3 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl"></div>
+        <div id="unique_ips_container" class="statistics-item col-span-3 lg:col-span-3 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl"></div>
+        <div id="top_hosts_container" class="statistics-item col-span-6 lg:col-span-4 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl"></div>
+        <div id="top_useragents_container" class="statistics-item col-span-6 lg:col-span-4 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl"></div>
+        <div id="top_countries_container" class="statistics-item col-span-6 lg:col-span-4 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl"></div>
+        <div id="top_asns_container" class="statistics-item col-span-6 lg:col-span-4 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl"></div>
+        <div id="requests_container" class="statistics-item col-span-12 lg:col-span-8 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl"><h4>Requests over Time</h4><canvas id="requestTimelineChart"></canvas></div>
+        <div id="statuscodes_container" class="statistics-item col-span-6 lg:col-span-4 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl"><h4>Status Codes</h4><canvas id="statusCodesChart"></canvas></div>
+        <div id="top_ips_container" class="statistics-item col-span-6 lg:col-span-4 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl"><h4>Top IPs</h4><canvas id="topIPsChart"></canvas></div>
+    </div>
+</div>
+<div id="hidden-items" class="col-span-12 p-4 w-full bg-gray-200 shadow-md rounded-2xl">
+    <h4>Hidden Items</h4>
+    <div id="parked-items" class="grid grid-cols-12 gap-4"></div>
 </div>
 
 <script nonce="{{ script_nonce }}">
     let updateInterval = 60;  // Update-Intervall (in Sekunden)
     let timeLeft = updateInterval;  // Zeit bis zur nächsten Aktualisierung
     let activeRange = 'max';  // Standardmäßig 24 Stunden als ausgewählter Filter
+    let editMode = false;  // Editiermodus aus
     let timer;  // Referenz für das setInterval
+    let statuscode_chart;
+    let ip_chart;
+    let requests_chart;
+    let sortable_main = Sortable.create(document.getElementById('statistics-content'), {
+                group: 'shared',  // Elemente können zwischen den Bereichen verschoben werden
+                disabled: true,
+                animation: 150
+            });
+
+    // Parkbereich Sortable machen
+    let sortable_hidden = Sortable.create(document.getElementById('parked-items'), {
+        group: 'shared',  // Erlaubt das Verschieben von Elementen zwischen Parkbereich und Hauptbereich
+        disabled: true,
+        animation: 150
+    });
 
     document.querySelectorAll('.time-filter').forEach(button => {
         button.addEventListener('click', function() {
@@ -47,33 +80,15 @@
             .catch(error => console.error('Error fetching data:', error));
     }
 
-    // Funktion zur Darstellung der Statistikdaten
     function renderStatistics(data) {
-        // Container leeren
-        const content = document.getElementById('statistics-content');
-        content.innerHTML = '';
 
-        // Dynamisch Daten anzeigen
-        content.innerHTML += `
-            <div class="col-span-3 lg:col-span-3 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl">
-                <h4>Total requests</h4>
-                <strong>${data.total_requests}</strong>
-            </div>
-            <div class="col-span-3 lg:col-span-3 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl">
-                <h4>4xx Error</h4>
-                <strong>${data.requests_4xx_percent}%</strong>
-            </div>
-            <div class="col-span-3 lg:col-span-3 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl">
-                <h4>5xx Error</h4>
-                <strong>${data.requests_5xx_percent}%</strong>
-            </div>
-            <div class="col-span-3 lg:col-span-3 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl">
-                <h4>Unique IPs</h4>
-                <strong>${data.unique_ips}</strong>
-            </div>
-        `;
+        // Rebuild containers with updated data
+        document.getElementById('total_requests_container').innerHTML = `<h4>Total requests</h4><strong>${data.total_requests}</strong>`;
+        document.getElementById('4xx_error_container').innerHTML = `<h4>4xx Error</h4><strong>${data.requests_4xx_percent}%</strong>`;
+        document.getElementById('5xx_error_container').innerHTML = `<h4>5xx Error</h4><strong>${data.requests_5xx_percent}%</strong>`;
+        document.getElementById('unique_ips_container').innerHTML = `<h4>Unique IPs</h4><strong>${data.unique_ips}</strong>`;
 
-        let _hosts = '<div class="col-span-6 lg:col-span-4 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl"><h4>Popular hosts</h4>';
+        let _hosts = '';
         data.hosts.slice(0, 5).forEach(([host, count]) => {
             const percentage = (count / data.total_requests) * 100;
             _hosts += `
@@ -87,11 +102,10 @@
                         </div>
                     </div>
             `;
-        });
-        _hosts += '</div>';
-        content.innerHTML += _hosts;
+        });        
+        document.getElementById('top_hosts_container').innerHTML = `<h4>Popular hosts</h4>${_hosts}`;
 
-        let _uas = '<div class="col-span-6 lg:col-span-4 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl"><h4>Top User Agents</h4>';
+        let _uas = '';
         data.user_agents.slice(0, 5).forEach(([ua, count]) => {
             const percentage = (count / data.total_requests) * 100;
             _uas += `
@@ -106,10 +120,9 @@
                     </div>
             `;
         });
-        _uas += '</div>';
-        content.innerHTML += _uas;
+        document.getElementById('top_useragents_container').innerHTML = `<h4>Top User Agents</h4>${_uas}`;
 
-        let _countries = '<div class="col-span-6 lg:col-span-4 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl"><h4>Top Countries</h4>';
+        let _countries = '';
         data.countries.slice(0, 5).forEach(([ctry, count]) => {
             const percentage = (count / data.total_requests) * 100;
             _countries += `
@@ -124,10 +137,9 @@
                     </div>
             `;
         });
-        _countries += '</div>';
-        content.innerHTML += _countries;
+        document.getElementById('top_countries_container').innerHTML = `<h4>Top Countries</h4>${_countries}`;
 
-        let _asn = '<div class="col-span-6 lg:col-span-4 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl"><h4>Top ASN</h4>';
+        let _asn = '';
         data.asns.slice(0, 5).forEach(([asn, count]) => {
             const percentage = (count / data.total_requests) * 100;
             _asn += `
@@ -142,14 +154,8 @@
                     </div>
             `;
         });
-        _asn += '</div>';
-        content.innerHTML += _asn;
+        document.getElementById('top_asns_container').innerHTML = `<h4>Top ASN</h4>${_asn}`;
 
-        content.innerHTML += '<div class="col-span-12 lg:col-span-8 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl"><h4>Requests over Time</h4><canvas id="requestTimelineChart"></canvas></div>';
-
-        content.innerHTML += '<div class="col-span-6 lg:col-span-4 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl"><h4>Status Codes</h4><canvas id="statusCodesChart"></canvas></div>';
-        content.innerHTML += '<div class="col-span-6 lg:col-span-4 p-4 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl"><h4>Top IPs</h4><canvas id="topIPsChart"></canvas></div>';
-        
         const colors = [
             'rgba(54, 162, 235, 1)',   // Blau
             'rgba(255, 99, 132, 1)',   // Rot
@@ -163,7 +169,8 @@
             'rgba(139, 69, 19, 1)'     // Braun
         ];
 
-        new Chart(document.getElementById('statusCodesChart'), {
+        statuscode_chart?.destroy();
+        statuscode_chart = new Chart(document.getElementById('statusCodesChart'), {
             type: 'doughnut',
             data: {
                 labels: data.status_codes.map((x) => x[0]),
@@ -177,7 +184,8 @@
             }
         });
 
-        new Chart(document.getElementById('topIPsChart'), {
+        ip_chart?.destroy();
+        ip_chart = new Chart(document.getElementById('topIPsChart'), {
             type: 'doughnut',
             data: {
                 labels: data.ips.slice(0, 5).map((x) => x[0]),
@@ -211,7 +219,8 @@
         const labels = data.request_timeline.map(item => item[0]);  // Zeitpunkte
         const values = data.request_timeline.map(item => item[1]);  // Anzahl der Requests
 
-        new Chart(ctx, {
+        requests_chart?.destroy();
+        requests_chart = new Chart(ctx, {
             type: 'line',
             data: {
                 labels: labels,  // Zeitachsen
@@ -262,6 +271,9 @@
 
     // Aktualisierungsfunktion und Timer-Logik
     function updateTimer() {
+        if (editMode){
+            return; //halt while editing
+        }
         const circle = document.querySelector('#update-indicator circle');
         const dashArray = 88;  // Voller Umfang des Kreises
         const dashOffset = (1 - (timeLeft / updateInterval)) * dashArray;
@@ -277,5 +289,61 @@
 
     // Starte den Timer nach dem Initialen Laden
     startTimer();
+
+    // Funktion zum Umschalten des Editiermodus
+    function toggleEditMode() {
+        editMode = !editMode;
+
+        document.querySelectorAll('.statistics-item').forEach(div => {
+            const toggleButton = div.querySelector('.toggle-visibility-btn');
+
+            // Falls kein Toggle-Button existiert, fügen wir ihn hinzu
+            if (!toggleButton) {
+                const newToggleButton = document.createElement('button');
+                newToggleButton.innerText = 'Hide';
+                newToggleButton.classList.add('toggle-visibility-btn');
+                newToggleButton.addEventListener('click', function() {
+                    if (!div.classList.contains('parked')) {
+                        // Element verstecken (ins Parkbereich verschieben)
+                        div.style.display = 'none';
+                        document.getElementById('parked-items').appendChild(div);
+                        div.style.display = 'block';  // Im Parkbereich sichtbar, aber mit rotem Rahmen
+                        div.classList.add('parked');
+                        newToggleButton.innerText = 'Show';
+                    } else {
+                        // Element wieder sichtbar machen (ins Hauptbereich verschieben)
+                        div.style.display = 'none';
+                        document.getElementById('statistics-content').appendChild(div);
+                        div.style.display = 'block';  // Im Hauptbereich sichtbar
+                        div.classList.remove('parked');
+                        newToggleButton.innerText = 'Hide';
+                    }
+                });
+                div.appendChild(newToggleButton);
+            }
+
+            // Buttons nur im Editiermodus sichtbar machen
+            if (editMode) {
+                div.classList.add('editable');
+                div.querySelector('.toggle-visibility-btn').style.display = 'inline-block';
+            } else {
+                div.classList.remove('editable');
+                div.querySelector('.toggle-visibility-btn').style.display = 'none';
+            }
+        });
+
+        // Parkbereich für ausgeblendete Divs sichtbar machen
+        document.getElementById('hidden-items').style.display = editMode ? 'block' : 'none';
+
+        // Drag-and-Drop-Funktionalität aktivieren/deaktivieren
+        sortable_main.option("disabled", !editMode);
+        sortable_hidden.option("disabled", !editMode);
+    }
+
+    // Initialer Aufruf, um den Editiermodus hinzuzufügen
+    document.getElementById('toggle-edit-mode-btn').addEventListener('click', toggleEditMode);
+
+    // Parkbereich standardmäßig ausblenden
+    document.getElementById('hidden-items').style.display = 'none';
 </script>
 {% endblock content %}

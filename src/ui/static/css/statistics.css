@@ -12,3 +12,41 @@
     background-color: #4BC0C0;
     color: white;
 }
+
+.edit-btn {
+    padding: 10px 20px;
+    background-color: #f1f1f1;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    margin-right: 10px;
+}
+
+.statistics-item.parked {
+    border: 2px solid red;  /* Roter Rahmen für ausgeblendete Divs */
+    opacity: 0.6;  /* Leichte Transparenz für visuelles Feedback */
+}
+
+/* Styles für den Parkbereich */
+#hidden-items {
+    display: none;  /* Parkbereich wird nur im Editiermodus sichtbar */
+    margin-top: 20px;
+    padding: 10px;
+    border: 2px dashed red;  /* Rot gestrichelte Umrandung */
+}
+
+/* Editierbare Divs im Editiermodus hervorheben */
+.editable {
+    border: 2px dashed blue;
+}
+
+.toggle-visibility-btn {
+    display: none;
+    margin-top: 10px;
+    padding: 5px;
+    background-color: #f44336;
+    color: white;
+    border: none;
+    cursor: pointer;
+}
