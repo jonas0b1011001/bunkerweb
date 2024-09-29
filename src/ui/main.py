@@ -10,6 +10,8 @@ from sys import path as sys_path, modules as sys_modules
 from pathlib import Path
 from typing import Union
 from uuid import uuid4
+import os
+from multiprocessing import Pool
 
 for deps_path in [join(sep, "usr", "share", "bunkerweb", *paths) for paths in (("deps", "python"), ("utils",), ("api",), ("db",))]:
     if deps_path not in sys_path:
@@ -2154,12 +2156,92 @@ def reports():
         username=current_user.get_id(),
     )
 
-def parse_logs(range="max"):
-    log_pattern = re_compile(
-        r'(?P<host>\S+) - (?P<status>\d{3}) - (?P<remote_addr>\S+) \[(?P<time_local>[^\]]+)\] "(?P<request>[^"]+)" "(?P<http_user_agent>[^"]+)" (?P<upstream_response_time>\S+)'
-    )
+log_pattern = re_compile(
+    r'(?P<host>\S+) - (?P<status>\d{3}) - (?P<remote_addr>\S+) \[(?P<time_local>[^\]]+)\] "(?P<request>[^"]+)" "(?P<http_user_agent>[^"]+)" (?P<upstream_response_time>\S+)'
+)
 
-    # Berechne den Zeitfilter
+def process_chunk(file_path, start, size, time_limit, time_format, time_step):
+    """
+    Processes a chunk of the log file starting at `start` position with the size of `size`.
+    """
+    total_requests = 0
+    successful_requests = 0
+    failed_requests = 0
+    requests_4xx = 0
+    requests_5xx = 0
+    hosts = Counter()
+    ips = Counter()
+    user_agents = Counter()
+    status_codes = Counter()
+    request_timeline = Counter()
+
+    with open(file_path, 'r', encoding='utf-8') as f:
+        f.seek(start)
+        chunk = f.read(size)
+        lines = chunk.splitlines()
+        for line in lines:
+            match = log_pattern.match(line)
+            if match:
+                data = match.groupdict()
+
+                # Zeitparsing und Filtern nach dem Zeitlimit
+                time_local_str = data['time_local'].split()[0]
+                log_time = datetime.strptime(time_local_str, "%d/%b/%Y:%H:%M:%S")
+                if time_limit and log_time < time_limit:
+                    continue  # Überspringe Logs, die älter als das Zeitlimit sind
+
+                total_requests += 1
+                status_code = int(data['status'])
+                host = data['host']
+                ip = data['remote_addr']
+                user_agent = data['http_user_agent']
+
+                # Erfolgreiche Anfragen (Statuscode 2xx)
+                if status_code < 399:
+                    successful_requests += 1
+                elif 400 <= status_code < 500:
+                    requests_4xx += 1
+                    failed_requests += 1
+                elif 500 <= status_code < 600:
+                    requests_5xx += 1
+                    failed_requests += 1
+
+                # Status-Codes zählen
+                status_codes[status_code] += 1
+
+                # Hostname, IP und User-Agent zählen
+                hosts[host] += 1
+                ips[ip] += 1
+                user_agents[user_agent] += 1
+
+                # Gruppiere die Requests nach dem definierten Zeitformat
+                time_key = log_time.strftime(time_format)
+                request_timeline[time_key] += 1
+
+    return (total_requests, successful_requests, failed_requests, requests_4xx, requests_5xx,
+            hosts, ips, user_agents, status_codes, request_timeline)
+
+def get_file_size(file_path):
+    """
+    Returns the size of the file at `file_path`.
+    """
+    return os.path.getsize(file_path)
+
+def split_file(file_path, num_chunks):
+    """
+    Splits the file into `num_chunks` chunks by calculating their starting positions and sizes.
+    """
+    file_size = get_file_size(file_path)
+    chunk_size = file_size // num_chunks
+    offsets = [(i * chunk_size, chunk_size) for i in range(num_chunks)]
+    return offsets
+
+def parse_logs_in_parallel(range="max", num_processes=4):
+    """
+    Parses logs in parallel using multiple processes.
+    """
+
+    # Zeitlimit und Format je nach Range definieren
     now = datetime.now()
     if range == "1hr":
         time_limit = now - timedelta(hours=1)
@@ -2182,6 +2264,21 @@ def parse_logs(range="max"):
         time_format = "%d/%b/%Y"  # Standardmäßig nach Tagen gruppieren
         time_step = timedelta(days=1)
 
+    # Datei und MaxMind-Datenbanken
+    nginx_access_file = Path(os.sep, "var", "log", "bunkerweb", "access.log")
+    asn_reader = maxminddb.Reader(Path(os.sep, "var", "cache", "bunkerweb", "jobs", "asn.mmdb"))
+    country_reader = maxminddb.Reader(Path(os.sep, "var", "cache", "bunkerweb", "jobs", "country.mmdb"))
+
+    offsets = split_file(nginx_access_file, num_processes)
+
+    # Verwende Pool, um parallele Prozesse zu starten
+    with Pool(processes=num_processes) as pool:
+        results = pool.starmap(
+            process_chunk,
+            [(nginx_access_file, start, size, time_limit, time_format, time_step) for start, size in offsets]
+        )
+
+    # Gesamtergebnisse zusammenführen
     total_requests = 0
     successful_requests = 0
     failed_requests = 0
@@ -2191,62 +2288,34 @@ def parse_logs(range="max"):
     ips = Counter()
     user_agents = Counter()
     status_codes = Counter()
-    request_timeline = Counter()  # Zählt Requests pro Zeitintervall
+    request_timeline = Counter()
 
-    nginx_access_file = Path(sep, "var", "log", "bunkerweb", "access.log")
-    asn_reader = maxminddb.Reader(Path(sep, "var", "cache", "bunkerweb", "jobs", "asn.mmdb"))
-    country_reader = maxminddb.Reader(Path(sep, "var", "cache", "bunkerweb", "jobs", "country.mmdb"))
-    
-    if nginx_access_file.is_file():
-        with open(nginx_access_file, encoding="utf-8") as f:
-            for line in f.readlines():
-                match = log_pattern.match(line)
-                if match:
-                    data = match.groupdict()
+    for result in results:
+        (total_r, successful_r, failed_r, req_4xx, req_5xx, host_counter,
+         ip_counter, ua_counter, status_counter, timeline) = result
 
-                    # Zeitparsing und Filtern nach dem Zeitlimit
-                    time_local_str = data['time_local'].split()[0]
-                    log_time = datetime.strptime(time_local_str, "%d/%b/%Y:%H:%M:%S")
-                    if time_limit and log_time < time_limit:
-                        continue  # Überspringe Logs, die älter als das Zeitlimit sind
+        total_requests += total_r
+        successful_requests += successful_r
+        failed_requests += failed_r
+        requests_4xx += req_4xx
+        requests_5xx += req_5xx
 
-                    total_requests += 1
-                    status_code = int(data['status'])
-                    host = data['host']
-                    ip = data['remote_addr']
-                    user_agent = data['http_user_agent']
-
-                    # Erfolgreiche Anfragen (Statuscode 2xx)
-                    if status_code < 399:
-                        successful_requests += 1
-                    elif 400 <= status_code < 500:
-                        requests_4xx += 1
-                        failed_requests += 1
-                    elif 500 <= status_code < 600:
-                        requests_5xx += 1
-                        failed_requests += 1
-
-                    # Status-Codes zählen
-                    status_codes[status_code] += 1
-
-                    # Hostname, IP und User-Agent zählen
-                    hosts[host] += 1
-                    ips[ip] += 1
-                    user_agents[user_agent] += 1
-
-                    # Gruppiere die Requests nach dem definierten Zeitformat
-                    time_key = log_time.strftime(time_format)
-                    request_timeline[time_key] += 1
+        hosts.update(host_counter)
+        ips.update(ip_counter)
+        user_agents.update(ua_counter)
+        status_codes.update(status_counter)
+        request_timeline.update(timeline)
 
     countries = Counter()
     asns = Counter()
-    for itm in ips.most_common():
-        ctry = country_reader.get(itm[0])
-        asn = asn_reader.get(itm[0])
-        if ctry is not None:
-            countries[ctry["country"]["iso_code"]] += itm[1]
-        if asn is not None:
-            asns[f"{asn['autonomous_system_organization']} ({asn['autonomous_system_number']})"] += itm[1]
+    for ip, count in ips.most_common():
+        ctry = country_reader.get(ip)
+        asn = asn_reader.get(ip)
+        if ctry:
+            countries[ctry["country"]["iso_code"]] += count
+        if asn:
+            asns[f"{asn['autonomous_system_organization']} ({asn['autonomous_system_number']})"] += count
+
     country_reader.close()
     asn_reader.close()
 
@@ -2257,13 +2326,127 @@ def parse_logs(range="max"):
         if time_key not in request_timeline:
             request_timeline[time_key] = 0
         current_time -= time_step
-    
-    # Sortiere die Timeline nach Zeitpunkten
-     #request_timeline = dict(sorted(request_timeline.items()))
 
     return {
         'total_requests': total_requests,
         'request_timeline': list(request_timeline.items()),  # Zeit-Werte Paare für das Chart
+        'successful_requests': successful_requests,
+        'failed_requests': failed_requests,
+        'requests_4xx_percent': round((requests_4xx / total_requests) * 100, 2) if total_requests > 0 else 0,
+        'requests_5xx_percent': round((requests_5xx / total_requests) * 100, 2) if total_requests > 0 else 0,
+        'unique_ips': len(ips),
+        'hosts': hosts.most_common(),
+        'ips': ips.most_common(),
+        'user_agents': user_agents.most_common(),
+        'status_codes': status_codes.most_common(),
+        'countries': countries.most_common(),
+        'asns': asns.most_common()
+    }
+    log_pattern = re_compile(
+        r'(?P<host>\S+) - (?P<status>\d{3}) - (?P<remote_addr>\S+) \[(?P<time_local>[^\]]+)\] "(?P<request>[^"]+)" "(?P<http_user_agent>[^"]+)" (?P<upstream_response_time>\S+)'
+    )
+
+    now = datetime.now()
+    if range == "1hr":
+        time_limit = now - timedelta(hours=1)
+        time_format = "%H:%M"
+        time_step = timedelta(minutes=1)
+    elif range == "24hrs":
+        time_limit = now - timedelta(hours=24)
+        time_format = "%d/%b/%Y %H:00"
+        time_step = timedelta(hours=1)
+    elif range == "7d":
+        time_limit = now - timedelta(days=7)
+        time_format = "%d/%b/%Y %H:00"
+        time_step = timedelta(hours=1)
+    elif range == "30d":
+        time_limit = now - timedelta(days=30)
+        time_format = "%d/%b/%Y"
+        time_step = timedelta(days=1)
+    else:
+        time_limit = None
+        time_format = "%d/%b/%Y"
+        time_step = timedelta(days=1)
+
+    total_requests = 0
+    successful_requests = 0
+    failed_requests = 0
+    requests_4xx = 0
+    requests_5xx = 0
+    hosts = Counter()
+    ips = Counter()
+    user_agents = Counter()
+    status_codes = Counter()
+    request_timeline = Counter()
+
+    nginx_access_file = Path(sep, "var", "log", "bunkerweb", "access.log")
+    asn_reader = maxminddb.Reader(Path(sep, "var", "cache", "bunkerweb", "jobs", "asn.mmdb"))
+    country_reader = maxminddb.Reader(Path(sep, "var", "cache", "bunkerweb", "jobs", "country.mmdb"))
+    
+    if nginx_access_file.is_file():
+        with open(nginx_access_file, encoding="utf-8") as f:
+            for line in f:
+                match = log_pattern.match(line)
+                if match:
+                    data = match.groupdict()
+
+                    time_local_str = data['time_local'].split()[0]
+                    log_time = datetime.strptime(time_local_str, "%d/%b/%Y:%H:%M:%S")
+                    if time_limit and log_time < time_limit:
+                        continue
+
+                    total_requests += 1
+                    status_code = int(data['status'])
+                    host = data['host']
+                    ip = data['remote_addr']
+                    user_agent = data['http_user_agent']
+
+                    if status_code < 399:
+                        successful_requests += 1
+                    elif 400 <= status_code < 500:
+                        requests_4xx += 1
+                        failed_requests += 1
+                    elif 500 <= status_code < 600:
+                        requests_5xx += 1
+                        failed_requests += 1
+
+                    status_codes[status_code] += 1
+                    hosts[host] += 1
+                    ips[ip] += 1
+                    user_agents[user_agent] += 1
+
+                    time_key = log_time.strftime(time_format)
+                    request_timeline[time_key] += 1
+
+    ip_cache = {}
+    countries = Counter()
+    asns = Counter()
+    for ip, count in ips.items():
+        if ip not in ip_cache:
+            ctry = country_reader.get(ip)
+            asn = asn_reader.get(ip)
+            ip_cache[ip] = (ctry, asn)
+        else:
+            ctry, asn = ip_cache[ip]
+
+        if ctry:
+            countries[ctry["country"]["iso_code"]] += count
+        if asn:
+            asns[f"{asn['autonomous_system_organization']} ({asn['autonomous_system_number']})"] += count
+
+    country_reader.close()
+    asn_reader.close()
+
+    current_time = now.replace(second=0, microsecond=0)
+    while current_time >= (time_limit or now - timedelta(days=30)):
+        time_key = current_time.strftime(time_format)
+        if time_key not in request_timeline:
+            request_timeline[time_key] = 0
+        current_time -= time_step
+
+    return {
+        'total_requests': total_requests,
+        'request_timeline': list(request_timeline.items()),
         'successful_requests': successful_requests,
         'failed_requests': failed_requests,
         'requests_4xx_percent': round((requests_4xx / total_requests) * 100, 2) if total_requests > 0 else 0,
@@ -2282,7 +2465,7 @@ def parse_logs(range="max"):
 def api_statistics():
     range = request.args.get('range', default='max', type=str)
     
-    log_data = parse_logs(range)
+    log_data = parse_logs_in_parallel(range,8)
     
     return jsonify(log_data)
 
