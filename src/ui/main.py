@@ -2173,9 +2173,8 @@ def process_chunk(file_path, start, size, time_limit, time_format, time_step):
     ips = Counter()
     user_agents = Counter()
     status_codes = Counter()
-    request_timeline = Counter()
-    failed_timeline = Counter()
-    success_timeline = Counter()
+    request_timeline = {}
+
     failed_403_uris = Counter()
     failed_404_uris = Counter()
     failed_429_uris = Counter()
@@ -2204,15 +2203,19 @@ def process_chunk(file_path, start, size, time_limit, time_format, time_step):
 
                 # Gruppiere die Requests nach dem definierten Zeitformat
                 time_key = log_time.strftime(time_format)
-                request_timeline[time_key] += 1
+                if time_key not in request_timeline:
+                    request_timeline[time_key] = {"total": 0, "success": 0, "failed": 0}
+
+                request_timeline[time_key]["total"] += 1
 
                 if status_code < 399:
                     successful_requests += 1
-                    success_timeline[time_key] += 1
+                    request_timeline[time_key]["success"] += 1
                 elif 400 <= status_code < 500:
                     requests_4xx += 1
                     failed_requests += 1
-                    failed_timeline[time_key] += 1
+                    request_timeline[time_key]["failed"] += 1
+
                     if status_code == 403:
                         failed_403_uris[host + uri] += 1
                     elif status_code == 404:
@@ -2222,7 +2225,7 @@ def process_chunk(file_path, start, size, time_limit, time_format, time_step):
                 elif 500 <= status_code < 600:
                     requests_5xx += 1
                     failed_requests += 1
-                    failed_timeline[time_key] += 1
+                    request_timeline[time_key]["failed"] += 1
 
                 # Status-Codes zählen
                 status_codes[status_code] += 1
@@ -2233,7 +2236,7 @@ def process_chunk(file_path, start, size, time_limit, time_format, time_step):
                 user_agents[user_agent] += 1
 
     return (total_requests, successful_requests, failed_requests, requests_4xx, requests_5xx, failed_403_uris, 
-            failed_404_uris, failed_429_uris, hosts, ips, user_agents, status_codes, request_timeline, failed_timeline, success_timeline)
+            failed_404_uris, failed_429_uris, hosts, ips, user_agents, status_codes, request_timeline)
 
 def get_file_size(file_path):
     """
@@ -2254,7 +2257,6 @@ def parse_logs_in_parallel(range="max", num_processes=4):
     """
     Parses logs in parallel using multiple processes.
     """
-
     # Zeitlimit und Format je nach Range definieren
     now = datetime.now()
     if range == "1hr":
@@ -2305,13 +2307,12 @@ def parse_logs_in_parallel(range="max", num_processes=4):
     ips = Counter()
     user_agents = Counter()
     status_codes = Counter()
-    request_timeline = Counter()
-    failed_timeline = Counter()
-    success_timeline = Counter()
+    request_timeline = {}
 
     for result in results:
-        (total_r, successful_r, failed_r, req_4xx, req_5xx, failed_403_uris_counter, failed_404_uris_counter,
-         failed_429_uris_counter, host_counter, ip_counter, ua_counter, status_counter, timeline, failed_time, success_time) = result
+        (total_r, successful_r, failed_r, req_4xx, req_5xx, failed_403_uris_counter,
+         failed_404_uris_counter, failed_429_uris_counter, host_counter, ip_counter,
+         ua_counter, status_counter, timeline) = result
 
         total_requests += total_r
         successful_requests += successful_r
@@ -2326,9 +2327,14 @@ def parse_logs_in_parallel(range="max", num_processes=4):
         ips.update(ip_counter)
         user_agents.update(ua_counter)
         status_codes.update(status_counter)
-        request_timeline.update(timeline)
-        failed_timeline.update(failed_time)
-        success_timeline.update(success_time)
+
+        # Update the timeline by merging timelines from each process
+        for time_key, counts in timeline.items():
+            if time_key not in request_timeline:
+                request_timeline[time_key] = {"total": 0, "success": 0, "failed": 0}
+            request_timeline[time_key]["total"] += counts["total"]
+            request_timeline[time_key]["success"] += counts["success"]
+            request_timeline[time_key]["failed"] += counts["failed"]
 
     countries = Counter()
     asns = Counter()
@@ -2348,18 +2354,15 @@ def parse_logs_in_parallel(range="max", num_processes=4):
     while current_time >= (time_limit or now - timedelta(days=30)):  # Standard max-Range auf 30 Tage
         time_key = current_time.strftime(time_format)
         if time_key not in request_timeline:
-            request_timeline[time_key] = 0
-        if time_key not in failed_timeline:
-            failed_timeline[time_key] = 0
-        if time_key not in success_timeline:
-            success_timeline[time_key] = 0
+            request_timeline[time_key] = {"total": 0, "success": 0, "failed": 0}
         current_time -= time_step
+
+    # Convert request_timeline to lists of items
+    request_timeline = [(k, v["total"], v["success"], v["failed"]) for k, v in request_timeline.items()]
 
     return {
         'total_requests': total_requests,
-        'request_timeline': list(request_timeline.items()),
-        'failed_timeline': list(failed_timeline.items()),
-        'success_timeline': list(success_timeline.items()),
+        'request_timeline': request_timeline,
         'successful_requests': successful_requests,
         'failed_requests': failed_requests,
         'requests_4xx_percent': round((requests_4xx / total_requests) * 100, 2) if total_requests > 0 else 0,
