@@ -24,7 +24,9 @@
         <div id="top_useragents_container" class="statistics-item col-span-6 lg:col-span-4 p-4 hover:scale-102 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl" data-id="5"></div>
         <div id="top_countries_container" class="statistics-item col-span-6 lg:col-span-4 p-4 hover:scale-102 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl" data-id="6"></div>
         <div id="top_asns_container" class="statistics-item col-span-6 lg:col-span-4 p-4 hover:scale-102 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl" data-id="7"></div>
-        <div id="top_404_uris_container" class="statistics-item col-span-6 lg:col-span-4 p-4 hover:scale-102 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl" data-id="8"><h4>Top 404</h4><canvas id="top404Chart"></canvas></div>
+        <div id="top_403_uris_container" class="statistics-item col-span-6 lg:col-span-4 p-4 hover:scale-102 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl" data-id="13"><h4>Top 403 URIs</h4><canvas id="top403Chart"></canvas></div>
+        <div id="top_404_uris_container" class="statistics-item col-span-6 lg:col-span-4 p-4 hover:scale-102 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl" data-id="8"><h4>Top 404 URIs</h4><canvas id="top404Chart"></canvas></div>
+        <div id="top_429_uris_container" class="statistics-item col-span-6 lg:col-span-4 p-4 hover:scale-102 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl" data-id="12"><h4>Top 429 URIs</h4><canvas id="top429Chart"></canvas></div>
         <div id="requests_container" class="statistics-item col-span-12 lg:col-span-8 p-4 hover:scale-102 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl" data-id="9"><h4>Requests over Time</h4><canvas id="requestTimelineChart"></canvas></div>
         <div id="statuscodes_container" class="statistics-item col-span-6 lg:col-span-4 p-4 hover:scale-102 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl" data-id="10"><h4>Status Codes</h4><canvas id="statusCodesChart"></canvas></div>
         <div id="top_ips_container" class="statistics-item col-span-6 lg:col-span-4 p-4 hover:scale-102 w-full bg-white dark:bg-slate-850 shadow-md rounded-2xl" data-id="11"><h4>Top IPs</h4><canvas id="topIPsChart"></canvas></div>
@@ -44,7 +46,9 @@
     let statuscode_chart;
     let ip_chart;
     let requests_chart;
+    let uri_403_chart;
     let uri_404_chart;
+    let uri_429_chart;
 
     let hidden = localStorage.getItem('hidden') || '';
     hidden.split('|').forEach(dataid => {
@@ -252,13 +256,39 @@
             }
         });
 
+        uri_403_chart?.destroy();
+        uri_403_chart = new Chart(document.getElementById('top403Chart'), {
+            type: 'doughnut',
+            data: {
+                labels: data.failed_403_uris.slice(0, 5).map((x) => x[0]),
+                datasets: [{
+                    data: data.failed_403_uris.slice(0, 5).map((x) => x[1]),
+                    backgroundColor: colors,
+                    borderColor: colors
+                }]
+            }
+        });
+
         uri_404_chart?.destroy();
         uri_404_chart = new Chart(document.getElementById('top404Chart'), {
             type: 'doughnut',
             data: {
-                labels: data.failed_uris.slice(0, 5).map((x) => x[0]),
+                labels: data.failed_404_uris.slice(0, 5).map((x) => x[0]),
                 datasets: [{
-                    data: data.failed_uris.slice(0, 5).map((x) => x[1]),
+                    data: data.failed_404_uris.slice(0, 5).map((x) => x[1]),
+                    backgroundColor: colors,
+                    borderColor: colors
+                }]
+            }
+        });
+
+        uri_429_chart?.destroy();
+        uri_429_chart = new Chart(document.getElementById('top429Chart'), {
+            type: 'doughnut',
+            data: {
+                labels: data.failed_429_uris.slice(0, 5).map((x) => x[0]),
+                datasets: [{
+                    data: data.failed_429_uris.slice(0, 5).map((x) => x[1]),
                     backgroundColor: colors,
                     borderColor: colors
                 }]
@@ -267,11 +297,17 @@
 
         const ctx = document.getElementById('requestTimelineChart').getContext('2d');
         data.request_timeline.sort(function(a, b){return Date.parse(a[0]) - Date.parse(b[0])});
-        while (data.request_timeline[0][1] == 0) {
+        data.failed_timeline.sort(function(a, b){return Date.parse(a[0]) - Date.parse(b[0])});
+        data.success_timeline.sort(function(a, b){return Date.parse(a[0]) - Date.parse(b[0])});
+        while (data.request_timeline[0][1] == 0 && data.failed_timeline[0][1] == 0 && data.success_timeline[0][1] == 0 ) {
             data.request_timeline.shift();
+            data.failed_timeline.shift();
+            data.success_timeline.shift();
         }
         const labels = data.request_timeline.map(item => item[0]);  // Zeitpunkte
-        const values = data.request_timeline.map(item => item[1]);  // Anzahl der Requests
+        const values_total = data.request_timeline.map(item => item[1]);  // Anzahl der Requests
+        const values_failed = data.failed_timeline.map(item => item[1]);  // Anzahl der Requests
+        const values_success = data.success_timeline.map(item => item[1]);  // Anzahl der Requests
 
         requests_chart?.destroy();
         requests_chart = new Chart(ctx, {
@@ -279,10 +315,22 @@
             data: {
                 labels: labels,  // Zeitachsen
                 datasets: [{
-                    label: 'Number of Requests',
-                    data: values,  // Anzahl der Requests pro Zeitintervall
+                    label: 'Total Requests',
+                    data: values_total,  // Anzahl der Requests pro Zeitintervall
                     fill: false,
-                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderColor: 'yellow',
+                    tension: 0.1  // Glatte Kurvenlinie
+                },{
+                    label: 'Successful Requests',
+                    data: values_success,  // Anzahl der Requests pro Zeitintervall
+                    fill: false,
+                    borderColor: 'green',
+                    tension: 0.1  // Glatte Kurvenlinie
+                },{
+                    label: 'Failed Requests',
+                    data: values_failed,  // Anzahl der Requests pro Zeitintervall
+                    fill: false,
+                    borderColor: 'red',
                     tension: 0.1  // Glatte Kurvenlinie
                 }]
             },
@@ -296,15 +344,13 @@
                         },
                         ticks: {
                             autoSkip: true, // Bei kleinen Bildschirmen werden weniger Labels angezeigt
-                            maxTicksLimit: 5, // Begrenzung der maximalen Anzahl an Ticks
                         }
                     },
                     y: {
                         title: {
                             display: true,
                             text: 'Requests'
-                        },
-                        beginAtZero: true
+                        }
                     }
                 }
             }
