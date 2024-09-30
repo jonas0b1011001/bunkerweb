@@ -546,7 +546,7 @@ def before_request():
 def index():
     if app.config["DB"].get_ui_user():
         if current_user.is_authenticated:  # type: ignore
-            return redirect(url_for("home"))
+            return redirect(url_for("statistics"))
         return redirect(url_for("login"), 301)
     return redirect(url_for("setup"))
 
@@ -693,7 +693,7 @@ def totp():
         redirect(url_for("loading", next=request.form.get("next") or url_for("home")))
 
     if not current_user.is_two_factor_enabled or session.get("totp_validated", False):
-        return redirect(url_for("home"))
+        return redirect(url_for("statistics"))
 
     return render_template("totp.html")
 
@@ -2625,7 +2625,7 @@ def login():
     if not admin_user:
         return redirect(url_for("setup"))
     elif current_user.is_authenticated:  # type: ignore
-        return redirect(url_for("home"))
+        return redirect(url_for("statistics"))
 
     fail = False
     if request.method == "POST" and "username" in request.form and "password" in request.form:
