@@ -2261,7 +2261,7 @@ def parse_logs_in_parallel(range="max", num_processes=4):
     now = datetime.now()
     if range == "1hr":
         time_limit = now - timedelta(hours=1)
-        time_format = "%H:%M"  # Gruppierung nach Minuten
+        time_format = "%d/%b/%Y %H:%M"  # Gruppierung nach Minuten
         time_step = timedelta(minutes=1)
     elif range == "24hrs":
         time_limit = now - timedelta(hours=24)
